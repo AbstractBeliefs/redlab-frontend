@@ -1,0 +1,21 @@
+{% extends "index.html" %}
+{% block container %}
+<div class="jumbotron">
+	<form  action="{{ url_for('users') }}" method=post>
+		<div class="text-left">
+			<dd>  username: 
+			<input type='text' name='username'>
+			<input type='submit' value='Search'>
+	
+		</div>
+	
+	<hr>
+	
+	{# show all users from the list #}
+	{% for content in user_list%}
+		{% include 'short_user.html'  %}
+		&nbsp;{# separator #}
+	{% endfor %}
+	</form> 
+</div>
+{% endblock %} 

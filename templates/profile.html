@@ -1,0 +1,20 @@
+{% extends "index.html" %}
+{% block container %}
+
+
+<div class="jumbotron">
+{% include 'short_user.html' %}
+{% block short_user%}
+
+{% endblock %}
+{% if content.history %}
+	<hr>
+	<div>
+		{% for entry in content.history %}
+			<li>Logged in: {{entry[0]}} - {{entry[1]}}</li>
+		{% endfor %}
+	</div>
+{% endif %}
+</div>
+{% endblock %}
+

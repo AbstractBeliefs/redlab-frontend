@@ -1,0 +1,33 @@
+{% block short_user %}
+<table>
+	<tr>
+		<td>
+	
+	
+		<button  type="submit" name="picture" value="{{ content.user_id }}"> <img src="{{ content.profil_pic }}" alt="Profile picture" width ="150px" /></button>
+	
+			{% if profile %}
+			<form action="" method=post enctype=multipart/form-data>
+				<input type=file name=file>
+				<input type=submit value=Upload>
+			</form>
+			{% endif %}
+		
+		</td>
+		<td>
+		<table>
+			<tr>
+				<td>
+					<h2>{{ content.user_login }}<h2>
+				</td>
+			</tr>
+			<tr>
+				<td>
+					Last seen: {{ content.last_seen }}
+				</td>
+			</tr>
+		</table>	
+		</td>	
+	</tr>
+	</table>
+{% endblock %} 
