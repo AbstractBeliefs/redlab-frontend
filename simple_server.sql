@@ -16,7 +16,7 @@ USE `Api-server` ;
 -- Table `Api-server`.`Beacons`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `Api-server`.`Beacons` (
-  `serial` INT NOT NULL,
+  `serial` INT AUTO_INCREMENT  NOT NULL,
   `PSK` BLOB NOT NULL,
   `comment` VARCHAR(255) NULL,
   `last_seen` DATETIME NULL,
@@ -28,7 +28,7 @@ ENGINE = InnoDB;
 -- Table `Api-server`.`MAC`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `Api-server`.`MAC` (
-  `id` INT NOT NULL,
+  `id` INT AUTO_INCREMENT  NOT NULL,
   `MAC` VARCHAR(45) NOT NULL,
   `last_seen` DATETIME NULL,
   PRIMARY KEY (`id`))
@@ -50,7 +50,7 @@ ENGINE = InnoDB;
 -- Table `Api-server`.`VisibilityEvent`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `Api-server`.`VisibilityEvent` (
-  `id` INT NOT NULL,
+  `id` INT AUTO_INCREMENT NOT NULL,
   `event_time` DATETIME NULL,
   `beacon` INT NOT NULL,
   `Mac` INT NOT NULL,

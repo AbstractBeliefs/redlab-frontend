@@ -54,14 +54,38 @@ def allowed_file(filename):
 session = dict()
 
 @app.route('/')
-
-
 @app.route('/index')
 def index():
 	session['active_nav']='Home'
 	# main entry for webpage.
-	print session
 	return render_template('index.html',session=session)
+
+ 
+
+@app.route('/emulator', methods=['GET', 'POST'])
+def api_emul():
+	if request.method=='POST':
+		beacon=MySQLdb.escape_string(request.form['beacon'])
+		mac=MySQLdb.escape_string(request.form['mac'])
+		ev_type=MySQLdb.escape_string(request.form['event'])
+		con=mysql.connect()
+		cursor1=con.cursor()	
+		cursor1.execute(" INSERT INTO `Api-server`.`VisibilityEvent` (event_time,beacon,mac,event_type) VALUES (now(),'"+beacon+"','"+mac+"','"+ev_type+"')")
+		con.commit()
+		
+	macs=[]
+	beacons=[]
+	cursor = mysql.connect().cursor()
+	cursor.execute("SELECT id,MAC FROM `Api-server`.`MAC`")
+	data = cursor.fetchall()
+	for row in data:
+		macs.append([row[0],row[1]])
+	cursor.execute("SELECT serial,comment FROM `Api-server`.`Beacons`")
+	data = cursor.fetchall()
+	for row in data:
+		beacons.append([row[0],row[1]])
+	cursor.close()
+	return render_template('api_emul.html',beacons=beacons,macs=macs)
 
 
 @app.route('/wip',methods=['GET', 'POST'])
@@ -112,38 +136,12 @@ def register():
 			cursor.close()
 	return render_template('register.html',error=error)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+##################################################
+@app.route('/userdetails',methods=['GET'])
+def userdetails():
+	user_id=MySQLdb.escape_string(request.args['user_id'])
+	return redirect(url_for('profile',user_id=user_id,))
+	
 
 @app.route('/users',methods=['GET', 'POST'])
 def users():
@@ -154,26 +152,21 @@ def users():
 	# should add nav tab with user's login 
 	# optioon ony for admins
 	if not is_admin():
-		return render_template('index.html',session=session)
+		return render_template('index.html')
 	if 'picture' in request.form:
 		selected_user= request.form['picture']
 		content=show_content(selected_user,True)
 		session['active_nav']=content['user_login']
 		if not content['user_login'] in session['nav']:
-			session['nav'][content['user_login']]=len(session['nav'])
-		
-			
-			
-			
-	print session
+			session['nav'][content['user_login']]=url_for('userdetails',user_id=content['user_id'])
+		return redirect(url_for('userdetails',user_id=content['user_id'],))
+	
 	#get list of users
 	pattern="" #empty pattern
 	if request.method=='POST':#get pattern from user input if set
 		if request.form['username']:
 			pattern=MySQLdb.escape_string(request.form['username'])
-		print request.form
-	if request.method=='GET':
-		print request.form	
+		
 	#append wildcard to pattern in order to find users starting with pattern
 	pattern=pattern+'%' 
 	cursor = mysql.connect().cursor()
@@ -186,31 +179,8 @@ def users():
 		user_list.append(content)
 	return render_template('users.html',session=session,user_list=user_list)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 @app.route('/profile',methods=['GET' ,'POST'])
 def profile():
-	print session
 	#session['active_nav']='Profile'
 	#shows profile for user with specified id passed as get data
 	#if user_id is different than stored in session, only admin can profile
@@ -268,9 +238,8 @@ def login():
 			pasword=MySQLdb.escape_string(request.form['password'])
 			session['active_nav']='Profile'
 			if login_user(username, pasword):
-				print session
-				
-				return redirect(url_for('profile',session=session,user_id=session['logged_in']))
+
+				return redirect(url_for('profile',user_id=session['logged_in']))
 			
 	return render_template('login.html', error=error)
 
@@ -300,7 +269,6 @@ def login_user(login, password):
 		session['is_admin']=data[1]
 		result=True
 	cursor.close() #release database conneciton 
-	print session
 	return result
 
 def is_admin():

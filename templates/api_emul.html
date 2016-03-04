@@ -1,0 +1,23 @@
+{% extends "index.html" %}
+{% block container %}
+<h1>{{ error }}</h1>
+<form method="POST">
+	
+	<select name="beacon">
+{% for dev in beacons %}
+		<option value='{{ dev[0] }}'>{{ dev[1] }}</option>
+{% endfor %}
+	</select>
+	
+	<select name="mac">
+{% for dev in macs %}
+		<option value='{{ dev[0] }}'>{{ dev[1] }}</option>
+{% endfor %}
+	</select>
+	
+	<button type=submit name="event" value="1">DHCP</button>	
+	<button type=submit name="event" value="2">PING</button>
+	<button type=submit name="event" value="3">User Request</button>
+</form>
+
+{% endblock %}

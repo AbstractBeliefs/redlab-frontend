@@ -1,6 +1,4 @@
 {% block nav %}
-{{session}}
-{{session.active_nav}}
 <nav>
 	<ul class="nav nav-pills pull-left">
 		<li id='index' role="presentation" class="active"><a href="{{ url_for('index') }}">Home</a></li>
@@ -18,8 +16,16 @@
 	{% endif %}
 		<li role="presentation">  <a href="{{ url_for('wip') }}">Options</a>
 {% endif %}
-
+	{%if session.nav %}
+	{% for item ,href in session.nav.iteritems() %}
+		<li id= "{{ item|e }}" role="presentation"><a href="{{ href }}" >{{ item|e }}</a>
+	{% endfor %}
+	{% endif %}
 	</ul>
 </nav>
-{{request.endpoint}}
+
+<script>
+  $(document).ready(function () {
+  $("#{{request.endpoint}}").addClass("active"); })
+</script>
 {% endblock %}
