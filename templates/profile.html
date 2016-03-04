@@ -1,12 +1,10 @@
 {% extends "index.html" %}
 {% block container %}
-
-
 <div class="jumbotron">
-{% include 'short_user.html' %}
-{% block short_user%}
+{% include 'short_user1.html' %}
 
-{% endblock %}
+{% block short_user%}{% endblock %}
+
 {% if content.history %}
 	<hr>
 	<div>

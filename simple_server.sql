@@ -154,7 +154,7 @@ VIEW `frontend`.`check_in_events` AS
 -- -----------------------------------------------------
 
 
-insert into `Api-server`.`MAC` (`id`,`MAC`,`last_seen`)values (1,"00:00:00:00:00",now());
+insert into `Api-server`.`MAC` (`id`,`MAC`,`last_seen`)values (1,"00:00:00:00:00:00",now());
 insert into `frontend`.`users` values (1,"admin","admin","1",null,1);
 insert into `Api-server`.`EventType` values(1,"DHCP Discovery");
 insert into `Api-server`.`EventType` values(2,"PING Event");

@@ -1,13 +1,13 @@
 {% block nav %}
-<nav>
-	<ul class="nav nav-pills pull-left">
+<nav class="navbar">
+	<ul class="nav  nav-pills navbar-left">
 		<li id='index' role="presentation" class="active"><a href="{{ url_for('index') }}">Home</a></li>
 {% if not session.logged_in %}
 		<li id="login" role="presentation"> <a href="{{ url_for('login') }}">Log in</a></li>
 		<li id="register"="presentation"> <a href="{{ url_for('register') }}">Register</a></li>
 
 {% else %}
-<li id="profile" role="presentation">  <a href="{{ url_for('profile',user_id=session['logged_in']) }}">Me</a>
+		<li id="profile" role="presentation">  <a href="{{ url_for('profile',user_id=session['logged_in']) }}">Me</a>
 		<li id="logout" role="presentation">  <a href="{{ url_for('logout') }}">Log out</a>
 
 	{% if session.is_admin == 1 %}
@@ -17,8 +17,8 @@
 		<li role="presentation">  <a href="{{ url_for('wip') }}">Options</a>
 {% endif %}
 	{%if session.nav %}
-	{% for item ,href in session.nav.iteritems() %}
-		<li id= "{{ item|e }}" role="presentation"><a href="{{ href }}" >{{ item|e }}</a>
+	{% for user_login ,href in session.nav.iteritems() %}
+		<li id= "{{ user_login|e }}" role="presentation"><a href="{{ href }}" >{{ user_login|e }}</a>
 	{% endfor %}
 	{% endif %}
 	</ul>

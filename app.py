@@ -64,7 +64,11 @@ def index():
 
 @app.route('/emulator', methods=['GET', 'POST'])
 def api_emul():
+	# emulation of ap-server behaviour 
+	# displays form to select registered beacon device and Mac in ordet to emulate
+	# VisibilityEvent. Only for test purpse. Should be removed from final solution
 	if request.method=='POST':
+		#if button pressed insert into database selected VisibilityEvent
 		beacon=MySQLdb.escape_string(request.form['beacon'])
 		mac=MySQLdb.escape_string(request.form['mac'])
 		ev_type=MySQLdb.escape_string(request.form['event'])
@@ -72,19 +76,21 @@ def api_emul():
 		cursor1=con.cursor()	
 		cursor1.execute(" INSERT INTO `Api-server`.`VisibilityEvent` (event_time,beacon,mac,event_type) VALUES (now(),'"+beacon+"','"+mac+"','"+ev_type+"')")
 		con.commit()
-		
 	macs=[]
 	beacons=[]
+	#read all macs registered in db
 	cursor = mysql.connect().cursor()
 	cursor.execute("SELECT id,MAC FROM `Api-server`.`MAC`")
 	data = cursor.fetchall()
 	for row in data:
 		macs.append([row[0],row[1]])
+	# read all beacons registered in db
 	cursor.execute("SELECT serial,comment FROM `Api-server`.`Beacons`")
 	data = cursor.fetchall()
 	for row in data:
 		beacons.append([row[0],row[1]])
 	cursor.close()
+	# display form
 	return render_template('api_emul.html',beacons=beacons,macs=macs)
 
 
@@ -193,30 +199,36 @@ def profile():
 		if not is_admin():
 			# access denied
 			return render_template('wip.html',error="Sorry??")
-		profile=False
+		#profile=False
 	else:
 		profile=True
 		#if user is on "me"page can change his avatar picture
 		if request.method == 'POST':
-			file = request.files['file']
-			if file and allowed_file(file.filename):
-				#	save file as 'avatar(user_id)_.ext' so every user has 1 profile foto
-				#	no check on size is done!!
-				#	No check on pic dimensions is done!!
-				#	file can be uploaded only once. can not be deleted
+			if 'mac' in request.form:
+				mac = request.form['mac']
+				if not mac == get_mac_address(user_id):
+					if(re.match("^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$",mac)):
+						print set_mac_address(user_id,mac)
+			if 'file' in request.files:
+				file = request.files['file']
+				if file and allowed_file(file.filename):
+					#	save file as 'avatar(user_id)_.ext' so every user has 1 profile foto
+					#	no check on size is done!!
+					#	No check on pic dimensions is done!!
+					#	file can be uploaded only once. can not be deleted
 
-				#filename = secure_filename(file.filename)
-				filename='avatar'+str(user_id)+'_.'+file.filename.rsplit('.',1)[1]
-				#if os.path.isfile((os.path.join(app.config['UPLOAD_FOLDER'],filename))):
-				#	 print os.remove(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-				#else:
-				#	print("Sorry, I can not remove %s file." % (os.path.join(app.config['UPLOAD_FOLDER']+filename)))
-					
-				file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-				update_account_avatar(user_id,filename)
-				return redirect(url_for('profile',user_id=user_id,session=session))
+					#filename = secure_filename(file.filename)
+					filename='avatar'+str(user_id)+'_.'+file.filename.rsplit('.',1)[1]
+					#if os.path.isfile((os.path.join(app.config['UPLOAD_FOLDER'],filename))):
+					#	 print os.remove(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+					#else:
+					#	print("Sorry, I can not remove %s file." % (os.path.join(app.config['UPLOAD_FOLDER']+filename)))
+						
+					file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+					update_account_avatar(user_id,filename)
+					return redirect(url_for('profile',user_id=user_id))
 	content=show_content(user_id,is_admin())
-	return render_template('profile.html',session=session,content=content,profile=profile)
+	return render_template('profile.html',session=session,content=content,profile=True)
 	
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -294,13 +306,15 @@ def show_content(user_id,full):
 	if data:
 		content['user_id']=data[0]
 		content['user_login']=data[1]
-		
+		content['mac']=get_mac_address(user_id)
 		if data[3]:
 			content['profil_pic']=url_for('static',filename='uploads/'+data[3])
 		else:
 			content['profil_pic']= url_for('static',filename='img/default_user.jpg')
 		if full:
 			content['is_admin']=data[2]
+			
+			
 		cursor.execute("SELECT register_time FROM check_in_events WHERE user_id='" +str(user_id) + "' ORDER BY register_time DESC")
 		data = cursor.fetchall()
 		if len(data)>0:
@@ -349,6 +363,57 @@ def merge_sequence(seq,interval):
 			lo+=1
 		result.append([seq[lo-1],seq[hi]])
 	return result
+
+def set_mac_address(user_id,mac):
+	# Assigns MAC address to user with specified user_id
+	# If Mac is assigned to other user operation is not successfull
+	# If Mac have not been used function adds new address.
+	# if MAc is already in database function re-assigns it to specified user
+	# parameters:
+	#	user_id Id of user to assign Mac address
+	#	mac Mac-address to be assigned. Format is not evaluated
+	# return: 
+	#	error message.
+	con=mysql.connect()
+	cursor = con.cursor() 
+	#check if already assigned
+	cursor.execute("SELECT MAC FROM (`Api-server`.`MAC` JOIN `frontend`.`users` ON (`MAC`.id=`users`.`MAC_id`)) WHERE `MAC`.`MAC`='" +mac+"'")
+	data=cursor.fetchone()
+	if data:
+		return "Mac taken"
+	cursor.execute("SELECT id FROM `Api-server`.`MAC` WHERE `MAC`.`MAC`='" +mac+"'")
+	data=cursor.fetchone()
+	if not data:
+		# put new address into db
+		cursor.execute("INSERT INTO `Api-server`.`MAC`( `MAC`) VALUES ('" +mac+"')")
+		con.commit()
+		# get id of new address
+		cursor.execute("SELECT id FROM `Api-server`.`MAC` WHERE `MAC`.`MAC`='" +mac+"'")
+		data=cursor.fetchone()
+		if not data:
+			return "problem with adding mac"
+	# assign addres to user
+	cursor.execute ("UPDATE `frontend`.`users` SET `MAC_id`='"+str(data[0])+"' WHERE `id`='"+str(user_id)+"'")
+	con.commit()
+	return 'all ok'
+
+
+def get_mac_address(user_id):
+	# reads Mac address assigned to user with given user_id
+	# parameters:
+	#	user_id User whose Mac has to be retrived
+	# returns: 
+	#	string containg address of user or empty string if Mac address not assigned
+	cursor = mysql.connect().cursor()
+	cursor.execute("SELECT MAC FROM (`Api-server`.`MAC` JOIN `frontend`.`users` ON (`MAC`.id=`users`.`MAC_id`)) WHERE `users`.`id`='" +str(user_id)+"'")
+	data=cursor.fetchone()
+	cursor.close()
+	if data:
+		mac=data[0]
+	else:
+		mac=""
+	return mac
+
 
 def update_account_avatar(user_id,filename):
 	#updates picture in database for specified user
