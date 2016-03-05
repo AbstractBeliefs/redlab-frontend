@@ -1,26 +1,31 @@
-<!DOCTYPE html>
-<html>
-	<head>
+{% extends 'layout.html' %}
+{% block head %}
+	
 		<title>Checking Beacon</title>
 		<link href="http://getbootstrap.com/dist/css/bootstrap.min.css" rel="stylesheet">
 		<link href="http://getbootstrap.com/examples/jumbotron-narrow/jumbotron-narrow.css" rel="stylesheet">
+		<script src="{{ url_for('static',filename='scripts/jquery-1.12.1.min.js')}}"></script>
 		<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
- 	</head>
-	<body>
+		
+{% endblock %}
+{% block body %}
 		<div class="container">
 			<div class="header">
 				<H1 class="text=muted"> Check-in Beacon</h1>
 {% include 'nav.html' %}
 {% block nav %}{% endblock %}
 			</div>
+			<div>
 {% block container %}
-					<div class="jumbotron">
-						<h1>Welcome</h1>
-						This is Checking system which alows to confirm presence in specified place
-					</div>
+				<div class="jumbotron">
+					<h1>Welcome</h1>
+					This is Checking system which alows to confirm presence in specified place
+				</div>
 {% endblock %}
 			 </div>
 		</div>
-	</body>
-
-</html>
+		<script type="text/javascript" >
+			$(document).ready(function () {
+			$("#{%if navpil %}{{ navpil }}{% else %}{{ request.endpoint }}{% endif %}").addClass("active"); })
+		</script>	
+{% endblock%}

@@ -9,7 +9,11 @@
 	<hr>
 	<div>
 		{% for entry in content.history %}
-			<li>Logged in: {{entry[0]}} - {{entry[1]}}</li>
+			{% if entry[0] == entry[1] %}
+		<li>seen: {{entry[0]}} </li>
+			{% else %}
+		<li>Logged in: {{entry[0]}} - {{entry[1]}}</li>
+			{% endif %}
 		{% endfor %}
 	</div>
 {% endif %}

@@ -1,36 +1,25 @@
 {% block short_user %}
-
-
 <div class="row">
 	<div class="col-sm-6 col-md-4">
 		<div class="thumbnail">
 			<button  type="submit" name="picture" value="{{ content.user_id }}"> <img src="{{ content.profil_pic }}" alt="Profile picture" width ="150px" /></button>
-			{% if profile %}
-			<form action="" method=post enctype=multipart/form-data>
-				<input type=file name=file />
-				<input type=submit value=Upload />
-			</form>
-			{% endif %}
-			
+{% if profile %}
+		
+{% endif %}
 		</div>
 	</div>
 	<div>
 		<div class="col-sm-6 col-md-4">
-		<div>
-			<h2>{{ content.user_login }}<h2>
-		</div>
-		Last seen: {{ content.last_seen }}		
+			<div>
+				<h2>{{ content.user_login }}</h2>
+			</div>
+			Last seen: {{ content.last_seen }}		
 		</div>
 	</div>
 {% if profile %}
 	<div class="col-sm-6 col-md-4">
-	<form action="" method=post >
-		MAC <input type=text name='mac' value="{{content.mac}}">	
-		<input type=submit value=changeMac />
-	</form>
-		
+		MAC <input type=text name='mac' disabled="disabled" value="{{content.mac}}">	
 	</div>
 {% endif %}
 </div>
-
 {% endblock %} 

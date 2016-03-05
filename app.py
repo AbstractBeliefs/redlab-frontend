@@ -56,7 +56,6 @@ session = dict()
 @app.route('/')
 @app.route('/index')
 def index():
-	session['active_nav']='Home'
 	# main entry for webpage.
 	return render_template('index.html',session=session)
 
@@ -96,13 +95,11 @@ def api_emul():
 
 @app.route('/wip',methods=['GET', 'POST'])
 def wip():
-	session['active_nav']='Home'
 	#displays work in proggres page 
 	return render_template('wip.html',session=session)
 	
 @app.route('/register',methods=['GET', 'POST'])
 def register():
-	session['active_nav']='Register'
 	# displays form to capture user input for registration
 	# validates user input 
 	# register new user using data accuired from form
@@ -145,13 +142,13 @@ def register():
 ##################################################
 @app.route('/userdetails',methods=['GET'])
 def userdetails():
+	#redirect to profile for specified user
 	user_id=MySQLdb.escape_string(request.args['user_id'])
-	return redirect(url_for('profile',user_id=user_id,))
+	return redirect(url_for('profile',user_id=user_id))
 	
 
 @app.route('/users',methods=['GET', 'POST'])
 def users():
-	session['active_nav']='Users'
 	# shows list of all users 
 	# shoudl display last login time
 	# clicking on users avatar shoudl open window with user details
@@ -161,9 +158,10 @@ def users():
 		return render_template('index.html')
 	if 'picture' in request.form:
 		selected_user= request.form['picture']
+		#get information on selected user from database
 		content=show_content(selected_user,True)
-		session['active_nav']=content['user_login']
 		if not content['user_login'] in session['nav']:
+			#if nav for this user does not exist, add it to nav list
 			session['nav'][content['user_login']]=url_for('userdetails',user_id=content['user_id'])
 		return redirect(url_for('userdetails',user_id=content['user_id'],))
 	
@@ -187,7 +185,9 @@ def users():
 
 @app.route('/profile',methods=['GET' ,'POST'])
 def profile():
-	#session['active_nav']='Profile'
+	if 'logged_in' not in session:
+		flash('You are not logged in')
+		return redirect(url_for('login'))
 	#shows profile for user with specified id passed as get data
 	#if user_id is different than stored in session, only admin can profile
 	#user sees only basic information - last seen event
@@ -199,8 +199,10 @@ def profile():
 		if not is_admin():
 			# access denied
 			return render_template('wip.html',error="Sorry??")
+		navpil=show_content(user_id,False)['user_login']
 		#profile=False
 	else:
+		navpil=None
 		profile=True
 		#if user is on "me"page can change his avatar picture
 		if request.method == 'POST':
@@ -228,7 +230,7 @@ def profile():
 					update_account_avatar(user_id,filename)
 					return redirect(url_for('profile',user_id=user_id))
 	content=show_content(user_id,is_admin())
-	return render_template('profile.html',session=session,content=content,profile=True)
+	return render_template('profile.html',session=session,content=content,profile=True,navpil=navpil)
 	
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -236,7 +238,6 @@ def login():
 	# Displays form to capture user input for username and password
 	# validates user input 
 	# if entered data is valid logs in by setting session values
-	session['active_nav']='Log in'
 	error = None
 	if request.method == 'POST':		
 		if request.form['username']=="":
@@ -248,7 +249,6 @@ def login():
 			#need to be consulted with Brian
 			username=MySQLdb.escape_string(request.form['username'])
 			pasword=MySQLdb.escape_string(request.form['password'])
-			session['active_nav']='Profile'
 			if login_user(username, pasword):
 
 				return redirect(url_for('profile',user_id=session['logged_in']))
@@ -260,7 +260,6 @@ def logout():
 	# logs out user by clearing session values.
 	session.clear()
 	flash('You were logged out')
-	session['active_nav']='Home'
 	return redirect(url_for('index'))
 
 
@@ -338,6 +337,15 @@ def show_content(user_id,full):
 def session_start():
 	#stard new session
 	session['nav']=dict()
+
+def prepare_nav(active_page,session):
+	basic=[[],[],[]]
+
+
+
+
+
+
 	
 def merge_sequence(seq,interval):
 	# Function finds subsets of coherent values in sequence,
