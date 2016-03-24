@@ -83,6 +83,17 @@ ENGINE = InnoDB;
 
 CREATE SCHEMA  `frontend` DEFAULT CHARACTER SET utf8 ;
 USE `frontend` ;
+
+-- -----------------------------------------------------
+-- Table `forntend`.`mac`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `frontend`.`mac` (
+  `id` INT AUTO_INCREMENT  NOT NULL,
+  `mac` VARCHAR(45) NOT NULL,
+  PRIMARY KEY (`id`))
+ENGINE = InnoDB;
+
+
 -- -----------------------------------------------------
 -- Table `frontend`.`Users`
 -- -----------------------------------------------------
@@ -98,10 +109,16 @@ CREATE TABLE  `frontend`.`users` (
    INDEX `fk_Users_MAC1_idx` (`MAC_id` ASC),
    CONSTRAINT `fk_Users_MAC1`
     FOREIGN KEY (`MAC_id`)
-    REFERENCES `Api-server`.`MAC` (`id`)
+    REFERENCES `frontend`.`mac` (`id`)
      ON DELETE NO ACTION
      ON UPDATE NO ACTION )
 ENGINE = InnoDB;
+
+
+
+
+
+
 -- --------------------------------------------------
 -- View `frontend`.`check_in`
 -- -----------------------------------------------------
@@ -155,7 +172,10 @@ VIEW `frontend`.`check_in_events` AS
 
 
 insert into `Api-server`.`MAC` (`id`,`MAC`,`last_seen`)values (1,"00:00:00:00:00:00",now());
+
+insert into `frontend`.`mac` values (1,"00:00:00:00:00:00");
 insert into `frontend`.`users` values (1,"admin","admin","1",null,1);
+
 insert into `Api-server`.`EventType` values(1,"DHCP Discovery");
 insert into `Api-server`.`EventType` values(2,"PING Event");
 insert into `Api-server`.`EventType` values(3,"User Request");

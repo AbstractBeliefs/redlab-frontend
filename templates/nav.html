@@ -11,7 +11,7 @@
 	{% if session.is_admin == 1 %}
 						<li id="users" role="presentation"> <a href="{{ url_for('users') }}">Usres</a></li>
 	{% endif %}
-						<li id="options" role="presentation">  <a href="{{ url_for('wip') }}">Options</a>
+						<li id="options" role="presentation">  <a href="{{ url_for('options') }}">Options</a>
 {% endif %}
 {%if session.nav %}
 	{% for user_login ,href in session.nav.iteritems() %}

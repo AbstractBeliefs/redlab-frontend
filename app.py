@@ -1,18 +1,37 @@
+"""
+Implementation of fronted for Checkin-Beacon project
+Edinburgh Napier University 3rd year group project 2015/2016
+Group members: 
+	Christopher Caira
+	Przmeyslaw Beniamin Dorzak
+	Edward Kellet
+	Braian Lawes
+	Gareth Pulham
+	
+Author - Przemyslaw Beniamin Dorzak
+Design - Przmeyslaw Beniamin Dorzak / Gareth Pulham
+
+"""
 from flask import Flask
-from flaskext.mysql import MySQL
+
 from flask import render_template
 from flask import request
 from flask import redirect
 from flask import url_for
 from flask import flash
 
+from requests import put,get	# restful requests
 
+from flaskext.mysql import MySQL
+from contextlib import closing # for mysql  cursor witch closing clasue
 import MySQLdb 			#escape_string()
+
+
 import re				#re.match()
 import datetime			#calculate time periods
 
 #upload file
-import os
+import os				#disk operations for saving avatar file
 #from werkzeug import secure_filename #file is stored in changed name.
 UPLOAD_FOLDER='static/uploads'
 ALLOWED_EXTENTIONS= set (['png','jpg','jpeg','gif'])
@@ -26,11 +45,13 @@ MYSQL_DATABASE_PASSWORD = 'root'
 MYSQL_DATABASE_DB = 'frontend'
 MYSQL_DATABASE_HOST = 'localhost'
 CHECK_IN_INTERVAL= datetime.timedelta(minutes=10)
+API_URL='http://localhost'
+API_PORT=8080
 
 app=Flask(__name__)
 app.config.from_object(__name__)
 
-app.config['UPLOAD_FOLDER']=UPLOAD_FOLDER
+#app.config['UPLOAD_FOLDER']=UPLOAD_FOLDER
 
 # TODO
 # To load from separate file use. FRONTENT_SETINGS should be then env-setting 
@@ -45,7 +66,13 @@ mysql=MySQL()
 mysql.init_app(app)
 
 def allowed_file(filename):
-	#check if filename has allowed extension
+	"""
+	check if filename has allowed extension
+	parameters:
+		filename - string containing name of file to check
+	returns: 
+	 	True if filename is allowed, False otherwise
+	"""
 	return '.'in filename and filename.rsplit('.',1)[1] in ALLOWED_EXTENTIONS
 
 
@@ -59,7 +86,7 @@ def index():
 	# main entry for webpage.
 	return render_template('index.html',session=session)
 
- 
+
 
 @app.route('/emulator', methods=['GET', 'POST'])
 def api_emul():
@@ -70,25 +97,17 @@ def api_emul():
 		#if button pressed insert into database selected VisibilityEvent
 		beacon=MySQLdb.escape_string(request.form['beacon'])
 		mac=MySQLdb.escape_string(request.form['mac'])
-		ev_type=MySQLdb.escape_string(request.form['event'])
-		con=mysql.connect()
-		cursor1=con.cursor()	
-		cursor1.execute(" INSERT INTO `Api-server`.`VisibilityEvent` (event_time,beacon,mac,event_type) VALUES (now(),'"+beacon+"','"+mac+"','"+ev_type+"')")
-		con.commit()
+		update_mysql_query(" INSERT INTO `checkinapi`.`visibilityevents` (event_time,beacon,mac) VALUES (now(),'"+beacon+"','"+mac+"')")
 	macs=[]
 	beacons=[]
 	#read all macs registered in db
-	cursor = mysql.connect().cursor()
-	cursor.execute("SELECT id,MAC FROM `Api-server`.`MAC`")
-	data = cursor.fetchall()
+	data=execute_mysql_query("SELECT id,mac FROM `frontend`.`mac`")
 	for row in data:
-		macs.append([row[0],row[1]])
+		macs.append([row[1],row[1]])
 	# read all beacons registered in db
-	cursor.execute("SELECT serial,comment FROM `Api-server`.`Beacons`")
-	data = cursor.fetchall()
+	data=execute_mysql_query("SELECT serial,comment FROM `checkinapi`.`beacons`")
 	for row in data:
 		beacons.append([row[0],row[1]])
-	cursor.close()
 	# display form
 	return render_template('api_emul.html',beacons=beacons,macs=macs)
 
@@ -100,10 +119,12 @@ def wip():
 	
 @app.route('/register',methods=['GET', 'POST'])
 def register():
-	# displays form to capture user input for registration
-	# validates user input 
-	# register new user using data accuired from form
-	# logis in user if registration successfull
+	"""
+	displays form to capture user input for registration
+	validates user input 
+	register new user using data accuired from form
+	logis in user if registration successfull
+	"""
 	error = None
 	if request.method == 'POST':
 		# escape username and password user input, to use with database
@@ -120,24 +141,13 @@ def register():
 		elif password1 != password:
 			error = "Passwords do not match"
 		else:
-			#valid userename and password
-			con=mysql.connect()
-			cursor = con.cursor() 
-			# check if user of specified login allready exists
-			cursor.execute("SELECT COUNT(*) FROM users WHERE `login` = '"+username+"'")
-			data = cursor.fetchone()
-			if data[0] != 0:
-				# 
-				error = "login taken pick different"
-			else:
-				# all good, add new user
-				cursor.execute("INSERT INTO `frontend`.`users` (login,password,user_data) values ('"+username+"','"+password+"',0)")
-				con.commit() #required to apply result of insert operation to database
-				cursor.close() #release conneciton
-				if login_user(username,password):
-					return redirect(url_for('index',session=session))
-			cursor.close()
+			error=add_new_user(username,password)
+			if login_user(username,password):
+				return redirect(url_for('index',session=session))
 	return render_template('register.html',error=error)
+
+
+
 
 ##################################################
 @app.route('/userdetails',methods=['GET'])
@@ -146,14 +156,22 @@ def userdetails():
 	user_id=MySQLdb.escape_string(request.args['user_id'])
 	return redirect(url_for('profile',user_id=user_id))
 	
-
+@app.route('/options',methods=['GET', 'POST'])	
+def options():
+	# change optiosn for beacon device
+	pass
+	return render_template('device_options.html',session=session);
+	
+	
 @app.route('/users',methods=['GET', 'POST'])
 def users():
-	# shows list of all users 
-	# shoudl display last login time
-	# clicking on users avatar shoudl open window with user details
-	# should add nav tab with user's login 
-	# optioon ony for admins
+	"""
+	shows list of all users 
+	shoudl display last login time
+	clicking on users avatar shoudl open window with user details
+	should add nav tab with user's login 
+	optioon ony for admins
+	"""
 	if not is_admin():
 		return render_template('index.html')
 	if 'picture' in request.form:
@@ -172,11 +190,8 @@ def users():
 			pattern=MySQLdb.escape_string(request.form['username'])
 		
 	#append wildcard to pattern in order to find users starting with pattern
-	pattern=pattern+'%' 
-	cursor = mysql.connect().cursor()
-	cursor.execute("SELECT id FROM users WHERE login like '" + pattern + "'")
-	data= cursor.fetchall()
 	user_list=[]
+	data=get_list_of_users(pattern)
 	for row in data:
 		#get basic infrmation about each user from lsit of results
 		content=show_content(row[0],False)
@@ -185,32 +200,41 @@ def users():
 
 @app.route('/profile',methods=['GET' ,'POST'])
 def profile():
+	"""
+	shows profile for user with specified id passed as get data
+	if user_id is different than stored in session, only admin can profile
+	user sees only basic information - last seen event
+	admin sees list of visibility events
+	when device not set for this user message should be displayed.
+	"""
 	if 'logged_in' not in session:
+	# if not logged in go to login screen		
 		flash('You are not logged in')
 		return redirect(url_for('login'))
-	#shows profile for user with specified id passed as get data
-	#if user_id is different than stored in session, only admin can profile
-	#user sees only basic information - last seen event
-	#admin sees list of visibility events
-	#when device not set for this user message should be displayed.
-	pass
+	#get user_id from get 
 	user_id=MySQLdb.escape_string(request.args['user_id'])
 	if user_id != str(session['logged_in']):
 		if not is_admin():
 			# access denied
 			return render_template('wip.html',error="Sorry??")
+		# to set active class in nav to #uer_login
 		navpil=show_content(user_id,False)['user_login']
-		#profile=False
 	else:
 		navpil=None
 		profile=True
 		#if user is on "me"page can change his avatar picture
 		if request.method == 'POST':
 			if 'mac' in request.form:
+				#check if mac address has been changed
 				mac = request.form['mac']
-				if not mac == get_mac_address(user_id):
-					if(re.match("^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$",mac)):
-						print set_mac_address(user_id,mac)
+				#check if new mac address proper mac address
+				if(re.match("^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$",mac)):
+					#check if new mac is the same as in database
+					if not mac == get_mac_address(user_id):
+						#change mac address.
+						error = set_mac_address(user_id,mac)
+				else:
+					error ="New mac address is not valid"
 			if 'file' in request.files:
 				file = request.files['file']
 				if file and allowed_file(file.filename):
@@ -235,9 +259,11 @@ def profile():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-	# Displays form to capture user input for username and password
-	# validates user input 
-	# if entered data is valid logs in by setting session values
+	"""
+	Displays form to capture user input for username and password
+	validates user input 
+	if entered data is valid logs in by setting session values
+	"""
 	error = None
 	if request.method == 'POST':		
 		if request.form['username']=="":
@@ -263,14 +289,29 @@ def logout():
 	return redirect(url_for('index'))
 
 
+def session_start():
+	"""
+		starts new session
+		resets global variable session.
+		clears additional nav tabs.
+	"""
+	session.clear()
+	session['nav']=dict()
+	
+
 def login_user(login, password):
-	# checks if user with login and password is in database 
-	# sets session values with data from database
-	# returs true if login sucessfull, false otherwise
+	"""
+	TODO change plain text password to MD5 hash
+	checks if user with login and password is in database 
+	sets session values with data from database
+	parameters:
+		login - Login to check
+		password - password of user
+	returs 
+		true if login sucessfull, false otherwise
+	"""
 	result=False # login result
-	cursor = mysql.connect().cursor()
-	cursor.execute("SELECT id,user_data FROM users WHERE login='" + login + "' AND password='" + password + "'")
-	data = cursor.fetchone()
+	data=check_user_credentials(login,password)
 	if data is None:
 		#login uncucessfull
 		pass
@@ -279,29 +320,31 @@ def login_user(login, password):
 		session['logged_in']=data[0]
 		session['is_admin']=data[1]
 		result=True
-	cursor.close() #release database conneciton 
 	return result
 
 def is_admin():
-	# checks if logged user is admin
-	# possible need for revoking rights while logged in  
+	"""
+	checks if logged user is admin
+	possible need for revoking rights while logged in  
+	returns: 
+		true if user is admin, false otherwise
+	"""
 	if session:
 		return session['is_admin']==1
 	else: 
 		return False
 
 def show_content(user_id,full):
-	#create content to fill profile 
-	#parameters:
-	#	user_id - subject of profile check
-	#	full	- level of detail. =false for basic information and last check-in
-	#return 
-	#	dict with content to be displayed
+	"""
+	create content to fill profile 
+	parameters:
+		user_id - subject of profile check
+		full	- level of detail. =false for basic information and last check-in
+	return 
+		dict with content to be displayed
+	"""
 	content=dict()
-	cursor = mysql.connect().cursor()
-	cursor.execute("SELECT id,login,user_data, picture FROM users WHERE id='" +str(user_id) + "'")
-	data = cursor.fetchone()
-	#print user_id
+	data = get_user_details(user_id)
 	if data:
 		content['user_id']=data[0]
 		content['user_login']=data[1]
@@ -312,10 +355,8 @@ def show_content(user_id,full):
 			content['profil_pic']= url_for('static',filename='img/default_user.jpg')
 		if full:
 			content['is_admin']=data[2]
-			
-			
-		cursor.execute("SELECT register_time FROM check_in_events WHERE user_id='" +str(user_id) + "' ORDER BY register_time DESC")
-		data = cursor.fetchall()
+	
+		data=get_check_in_events(user_id)
 		if len(data)>0:
 			content['last_seen']=data[0][0] #last check-in
 			#check if user is on line now
@@ -331,31 +372,20 @@ def show_content(user_id,full):
 				content['history']=history
 		else:
 			content['last_seen']="Not seen."
-	cursor.close()
 	return content
 
-def session_start():
-	#stard new session
-	session['nav']=dict()
 
-def prepare_nav(active_page,session):
-	basic=[[],[],[]]
-
-
-
-
-
-
-	
 def merge_sequence(seq,interval):
-	# Function finds subsets of coherent values in sequence,
-	# which are distant no more than specified interval.
-	# Sequence must be sorted in decending order
-	#parametres:
-	#	seq List containing Sequence of numbers
-	#	interval Maximal distance betweeen values to be considered as coherent
-	#return:
-	#	list of value compartments merged according to interval value
+	"""
+	Function finds subsets of coherent values in sequence,
+	which are distant no more than specified interval.
+	Sequence must be sorted in decending order
+	parametres:
+		seq List containing Sequence of numbers
+		interval Maximal distance betweeen values to be considered as coherent
+	Returns:
+		list of value compartments merged according to interval value
+	"""
 	result=[]
 	if len(seq):
 		prev=seq[0]
@@ -372,64 +402,214 @@ def merge_sequence(seq,interval):
 		result.append([seq[lo-1],seq[hi]])
 	return result
 
-def set_mac_address(user_id,mac):
-	# Assigns MAC address to user with specified user_id
-	# If Mac is assigned to other user operation is not successfull
-	# If Mac have not been used function adds new address.
-	# if MAc is already in database function re-assigns it to specified user
-	# parameters:
-	#	user_id Id of user to assign Mac address
-	#	mac Mac-address to be assigned. Format is not evaluated
-	# return: 
-	#	error message.
-	con=mysql.connect()
-	cursor = con.cursor() 
-	#check if already assigned
-	cursor.execute("SELECT MAC FROM (`Api-server`.`MAC` JOIN `frontend`.`users` ON (`MAC`.id=`users`.`MAC_id`)) WHERE `MAC`.`MAC`='" +mac+"'")
-	data=cursor.fetchone()
+
+
+def add_new_user(username,password):
+	"""
+	Adds new user to database
+	parameters:
+		username - string containing login of new user
+		password - string containing password to be stored for new user
+	returns:
+		error message
+	"""
+	error=None
+	# check if user of specified login allready exists
+	data=execute_mysql_query("SELECT COUNT(*) FROM users WHERE `login` = '"+username+"'")[0]
+	if data[0] != 0:
+		error = "login taken pick different"
+	else:
+		# all good, add new user
+		update_mysql_query("INSERT INTO `frontend`.`users` (login,password,user_data) values ('"+username+"','"+password+"',0)")
+	return error
+
+
+
+def check_user_credentials(login,password):
+	"""
+	Retrieves basic data for for user
+	Parameters: 
+		login - login name of user to get information
+		password - password of user to authenticate 
+	Returns:
+		table containing basic inforation on user
+		data[0] - uesr_id	-  unique id of user
+		data[1] - user_data -  0 if user is ordinary user / 1 if user is admin
+	"""
+	data= execute_mysql_query("SELECT id,user_data FROM users WHERE login='" + login + "' AND password='" + password + "'")
 	if data:
+		return data[0]
+
+
+def get_check_in_events(user_id):
+	"""
+	Retrieves data for checking events for specified user
+	Parameters: 
+		user_id - Id of user to get inforation
+	Returns:
+		table containing checking events ordeterd desending by time of occurence
+	"""
+	#data =execute_mysql_query("SELECT register_time FROM check_in_events WHERE user_id='" +str(user_id) + "' ORDER BY register_time DESC")
+	data=get_visibility_for_mac(get_mac_address(user_id))
+	return data
+
+def get_user_details(user_id):
+	"""
+	Retrieves from database values connected to user with specified user_id
+	Parameters:
+		user_id - Id of user to get inforation
+	Returns:
+		talbe containing inforation
+		data[0] - id
+		data[1] - login
+		data[2] - user_data - 1 if user is admin
+		data[3]	- location of picture / null for default picture
+	"""
+	data= execute_mysql_query("SELECT id,login,user_data, picture FROM users WHERE id='" +str(user_id) + "'")
+	if data:
+		return data[0]
+
+def get_list_of_users(pattern):
+	"""
+	gets list of users statring with specified pattern. 
+	If pattern is empty string All users are returned.
+	parameters: 
+		pattern - String containing begining of login to filter
+	returns:
+		list o id's of users whose login begins with pattern
+	"""
+	pattern=pattern+'%' 
+	return execute_mysql_query("SELECT id FROM users WHERE login like '" + pattern + "'")
+
+def set_mac_address(user_id,mac):
+	"""
+	 Assigns MAC address to user with specified user_id
+	 If Mac is assigned to other user operation is not successfull
+	 If Mac have not been used function adds new address.
+	 if MAc is already in database function re-assigns it to specified user
+	Parameters:
+		user_id Id of user to assign Mac address
+		mac Mac-address to be assigned. Format is not evaluated
+	Returns: 
+		error message.
+	"""
+	#check if already assigned
+	error=None
+	data=execute_mysql_query("SELECT count(mac) FROM (`frontend`.`mac` JOIN `frontend`.`users` ON (`mac`.id=`users`.`MAC_id`)) WHERE `mac`.`mac`='" +mac+"'")[0]
+	if data and data[0]!=0:
 		return "Mac taken"
-	cursor.execute("SELECT id FROM `Api-server`.`MAC` WHERE `MAC`.`MAC`='" +mac+"'")
-	data=cursor.fetchone()
+	data=execute_mysql_query("SELECT id FROM `frontend`.`mac` WHERE `mac`.`mac`='" +mac+"'")
 	if not data:
 		# put new address into db
-		cursor.execute("INSERT INTO `Api-server`.`MAC`( `MAC`) VALUES ('" +mac+"')")
-		con.commit()
+		update_mysql_query("INSERT INTO `frontend`.`mac`( `mac`) VALUES ('" +mac+"')")
+
 		# get id of new address
-		cursor.execute("SELECT id FROM `Api-server`.`MAC` WHERE `MAC`.`MAC`='" +mac+"'")
-		data=cursor.fetchone()
+		data=execute_mysql_query("SELECT id FROM `frontend`.`mac` WHERE `mac`.`mac`='" +mac+"'")[0]
 		if not data:
 			return "problem with adding mac"
+	else:
+		data=data[0]
 	# assign addres to user
-	cursor.execute ("UPDATE `frontend`.`users` SET `MAC_id`='"+str(data[0])+"' WHERE `id`='"+str(user_id)+"'")
-	con.commit()
+	update_mysql_query("UPDATE `frontend`.`users` SET `MAC_id`='"+str(data[0])+"' WHERE `id`='"+str(user_id)+"'")
+
 	return 'all ok'
 
 
 def get_mac_address(user_id):
-	# reads Mac address assigned to user with given user_id
-	# parameters:
-	#	user_id User whose Mac has to be retrived
-	# returns: 
-	#	string containg address of user or empty string if Mac address not assigned
-	cursor = mysql.connect().cursor()
-	cursor.execute("SELECT MAC FROM (`Api-server`.`MAC` JOIN `frontend`.`users` ON (`MAC`.id=`users`.`MAC_id`)) WHERE `users`.`id`='" +str(user_id)+"'")
-	data=cursor.fetchone()
-	cursor.close()
+	"""
+	Reads Mac address assigned to user with given user_id
+	Parameters:
+		user_id User whose Mac has to be retrived
+	Returns: 
+		string containing address of user or empty string if Mac address not assigned
+	"""
+	data =execute_mysql_query("SELECT mac FROM (`frontend`.`mac` JOIN `frontend`.`users` ON (`mac`.id=`users`.`MAC_id`)) WHERE `users`.`id`='" +str(user_id)+"'")
 	if data:
-		mac=data[0]
+		mac=data[0][0]
 	else:
 		mac=""
 	return mac
 
-
 def update_account_avatar(user_id,filename):
-	#updates picture in database for specified user
-	con=mysql.connect()
-	cursor = con.cursor() 
-	cursor.execute("UPDATE `frontend`.`users` SET picture = '"+filename+"' WHERE id='"+str(user_id)+"'")
-	con.commit() #required to apply result of insert operation to database
-	cursor.close() #release conneciton
+	"""
+	Updates picture in database for specified user
+	Parameters:
+		user_id - Id of user to update picture
+		filename - File name of picture
+	 Returns:
+		none
+	"""
+	update_mysql_query("UPDATE `frontend`.`users` SET picture = '"+filename+"' WHERE id='"+str(user_id)+"'")
 
+def execute_mysql_query(query):
+	"""
+	Executes mysql query not requireing commit - SELECT
+	Parameters:
+		querry String containing query to execute
+	Returns:
+		Response data for query
+	"""
+	connection=mysql.connect()
+	with closing( connection.cursor() ) as cursor:
+		cursor.execute(query)
+		data = cursor.fetchall()
+	connection.close()
+	return data
+
+def update_mysql_query(query):
+	"""
+	Ececutes query requiring commit - INSERT, UPDATE, DELETE
+	Parameters:
+		querry String containing query to execute
+	Returns:
+		none
+	"""
+	connection=mysql.connect()
+	with closing( connection.cursor() ) as cursor:
+		cursor.execute(query)
+	connection.commit() #required to apply result of insert operation to database
+	connection.close() #release conneciton
+
+
+def get_visibility_for_mac(mac,limit=None,starting_date=None,ending_date=None):
+	"""
+	TODO limit, start_date, ending_date
+	gets all visibility events for specified mac within specified time period
+	parameters:
+		mac - string containing mac address to check
+		limit - number of evets of interest
+		starting_date - datetime containing begining of interval
+		ending_date - datetime containing end of interval
+	Returns:
+		List of dates when check-in event occured sorted in descending order
+	"""
+	#print mac
+	res=[]
+	#import time
+	if mac:
+		#k=(execute_mysql_query('select now() from dual'))[0][0]
+		#starting_date=k-CHECK_IN_INTERVAL
+		#ending_date=k
+		#limit=1
+		request_string = API_URL+':'+str(API_PORT)+'/mac/'+mac	
+		if starting_date:
+			request_string+='/'+starting_date.strftime('%s')
+			if ending_date:
+				request_string+='/'+ending_date.strftime('%s')
+			
+		if limit:
+			request_string+='?limit='+str(limit)
+		contents= get(request_string).json()
+		#print contents
+		if 'status' in contents and contents['status']=='ok':
+			for event in contents['eventlist']:
+				if event['mac']==mac:
+					#d=datetime(datetime.strptime(event['event_time'][5:-4],'%d %b %Y %H:%M:%S'))
+					d=datetime.datetime.fromtimestamp(event['event_time'])
+					#res.append( d)
+					res.append([d,event['beacon']] )
+
+	return res
+	
 if __name__=="__main__":
 	app.run()
