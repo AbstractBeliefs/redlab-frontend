@@ -7,11 +7,12 @@
 						<li id="register" role="presentation"> <a href="{{ url_for('register') }}">Register</a></li>
 {% else %}
 						<li id="profile" role="presentation">  <a href="{{ url_for('profile',user_id=session['logged_in']) }}">Me</a>
+						<li id="edit" role="presentation">  <a href="{{ url_for('edit',user_id=session['logged_in']) }}">Edit</a>
 						<li id="logout" role="presentation">  <a href="{{ url_for('logout') }}">Log out</a>
 	{% if session.is_admin == 1 %}
 						<li id="users" role="presentation"> <a href="{{ url_for('users') }}">Usres</a></li>
-	{% endif %}
-						<li id="options" role="presentation">  <a href="{{ url_for('options') }}">Options</a>
+						<li id="options" role="presentation">  <a href="{{ url_for('options') }}">Beacons</a>
+	{% endif %}					
 {% endif %}
 {%if session.nav %}
 	{% for user_login ,href in session.nav.iteritems() %}

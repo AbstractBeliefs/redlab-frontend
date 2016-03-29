@@ -20,7 +20,7 @@ from flask import redirect
 from flask import url_for
 from flask import flash
 
-from requests import put,get	# restful requests
+from requests import put,get,post,delete	# restful requests
 
 from flaskext.mysql import MySQL
 from contextlib import closing # for mysql  cursor witch closing clasue
@@ -45,7 +45,7 @@ MYSQL_DATABASE_PASSWORD = 'root'
 MYSQL_DATABASE_DB = 'frontend'
 MYSQL_DATABASE_HOST = 'localhost'
 CHECK_IN_INTERVAL= datetime.timedelta(minutes=10)
-API_URL='http://localhost'
+API_URL='http://localhost' 
 API_PORT=8080
 
 app=Flask(__name__)
@@ -148,65 +148,9 @@ def register():
 
 
 
-
 ##################################################
-@app.route('/userdetails',methods=['GET'])
-def userdetails():
-	#redirect to profile for specified user
-	user_id=MySQLdb.escape_string(request.args['user_id'])
-	return redirect(url_for('profile',user_id=user_id))
-	
-@app.route('/options',methods=['GET', 'POST'])	
-def options():
-	# change optiosn for beacon device
-	pass
-	return render_template('device_options.html',session=session);
-	
-	
-@app.route('/users',methods=['GET', 'POST'])
-def users():
-	"""
-	shows list of all users 
-	shoudl display last login time
-	clicking on users avatar shoudl open window with user details
-	should add nav tab with user's login 
-	optioon ony for admins
-	"""
-	if not is_admin():
-		return render_template('index.html')
-	if 'picture' in request.form:
-		selected_user= request.form['picture']
-		#get information on selected user from database
-		content=show_content(selected_user,True)
-		if not content['user_login'] in session['nav']:
-			#if nav for this user does not exist, add it to nav list
-			session['nav'][content['user_login']]=url_for('userdetails',user_id=content['user_id'])
-		return redirect(url_for('userdetails',user_id=content['user_id'],))
-	
-	#get list of users
-	pattern="" #empty pattern
-	if request.method=='POST':#get pattern from user input if set
-		if request.form['username']:
-			pattern=MySQLdb.escape_string(request.form['username'])
-		
-	#append wildcard to pattern in order to find users starting with pattern
-	user_list=[]
-	data=get_list_of_users(pattern)
-	for row in data:
-		#get basic infrmation about each user from lsit of results
-		content=show_content(row[0],False)
-		user_list.append(content)
-	return render_template('users.html',session=session,user_list=user_list)
-
-@app.route('/profile',methods=['GET' ,'POST'])
-def profile():
-	"""
-	shows profile for user with specified id passed as get data
-	if user_id is different than stored in session, only admin can profile
-	user sees only basic information - last seen event
-	admin sees list of visibility events
-	when device not set for this user message should be displayed.
-	"""
+@app.route("/edit",methods=['GET','POST'])
+def edit():
 	if 'logged_in' not in session:
 	# if not logged in go to login screen		
 		flash('You are not logged in')
@@ -252,8 +196,117 @@ def profile():
 						
 					file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
 					update_account_avatar(user_id,filename)
-					return redirect(url_for('profile',user_id=user_id))
-	content=show_content(user_id,is_admin())
+					return redirect(url_for('edit',user_id=user_id))
+	content=show_content(user_id,True)
+	return render_template('profile.html',session=session,content=content,profile=True)
+
+
+@app.route('/userdetails',methods=['GET'])
+def userdetails():
+	#redirect to profile for specified user
+	user_id=MySQLdb.escape_string(request.args['user_id'])
+	return redirect(url_for('profile',user_id=user_id))
+	
+@app.route('/options',methods=['GET','POST'])	
+def options():
+	"""
+	Display list of active beacons and generate buttons to add, edit, delete 
+	"""
+	if(is_admin()):
+		# this is only avaliable for admin
+		if request.method=='POST':
+			if 'Update' in request.form:
+				device_id=MySQLdb.escape_string(request.form['Update'])
+				if unicode(device_id).isnumeric():
+					comment=MySQLdb.escape_string(request.form['comment'])
+					error = set_beacon_device(device_id,comment)
+				else :
+					error= '<Update> Error processing beacon serial'
+				
+			if "Add" in request.form:
+				device_id=(MySQLdb.escape_string(request.form['serial']))
+				
+				if unicode(device_id).isnumeric():
+					comment=comment=MySQLdb.escape_string(request.form['comment'])
+					error=add_beacon_device(device_id,comment)
+				else:
+					error='<Add> Beacon serial has to be greater than 0'
+			if 'Delete' in request.form:
+				device_id=MySQLdb.escape_string(request.form['Delete'])
+				if unicode(device_id).isnumeric():	
+					error=remove_beacon_device(device_id)
+				else:
+					error= '<Delete> Error processing beacon serial'
+			if error!= 'ok':
+				flash(error)
+		beacons=get_beacon_devices() # restful request for devices
+		return render_template('device_options.html',session=session,beacons=beacons)
+	else:
+		return render_template('wip.html',error="Unauthorised.")
+	
+	
+@app.route('/users',methods=['GET', 'POST'])
+def users():
+	"""
+	shows list of all users 
+	shoudl display last login time
+	clicking on users avatar shoudl open window with user details
+	should add nav tab with user's login 
+	optioon ony for admins
+	"""
+	if not is_admin():
+		return render_template('index.html')
+	if 'picture' in request.form:
+		# pressed on button with user picture
+		selected_user= request.form['picture']
+		#get information on selected user from database
+		content=show_content(selected_user,True)
+		if not content['user_login'] in session['nav']:
+			#if nav for this user does not exist, add it to nav list
+			session['nav'][content['user_login']]=url_for('userdetails',user_id=content['user_id'])
+		return redirect(url_for('userdetails',user_id=content['user_id'],))
+	
+	#get list of users
+	pattern="" #empty pattern
+	if request.method=='POST':#get pattern from user input if set
+		if request.form['username']:
+			pattern=MySQLdb.escape_string(request.form['username'])
+		
+	#append wildcard to pattern in order to find users starting with pattern
+	user_list=[]
+	data=get_list_of_users(pattern)
+	for row in data:
+		#get basic infrmation about each user from lsit of results
+		content=show_content(row[0],False)
+		user_list.append(content)
+	return render_template('users.html',session=session,user_list=user_list)
+
+@app.route('/profile',methods=['GET' ])
+def profile():
+	"""
+	shows profile for user with specified id passed as get data
+	if user_id is different than stored in session, only admin can profile
+	user sees only basic information - last seen event
+	admin sees list of visibility events
+	when device not set for this user message should be displayed.
+	"""
+	if 'logged_in' not in session:
+	# if not logged in go to login screen		
+		flash('You are not logged in')
+		return redirect(url_for('login'))
+	#get user_id from get 
+	user_id=MySQLdb.escape_string(request.args['user_id'])
+	if user_id != str(session['logged_in']):
+		if not is_admin():
+			# access denied
+			return render_template('wip.html',error="Sorry??")
+		# to set active class in nav to #uer_login
+		navpil=show_content(user_id,False)['user_login']
+	else:
+		navpil=None
+		profile=True
+		
+	content=show_content(user_id,True)
 	return render_template('profile.html',session=session,content=content,profile=True,navpil=navpil)
 	
 
@@ -573,22 +626,19 @@ def update_mysql_query(query):
 
 def get_visibility_for_mac(mac,limit=None,starting_date=None,ending_date=None):
 	"""
-	TODO limit, start_date, ending_date
-	gets all visibility events for specified mac within specified time period
+	Gets all visibility events for specified mac within specified time period
 	parameters:
 		mac - string containing mac address to check
 		limit - number of evets of interest
 		starting_date - datetime containing begining of interval
 		ending_date - datetime containing end of interval
 	Returns:
-		List of dates when check-in event occured sorted in descending order
+		List of [date,beacon] tuples when check-in event occured sorted in descending order
 	"""
-	#print mac
 	res=[]
-	#import time
 	if mac:
 		#k=(execute_mysql_query('select now() from dual'))[0][0]
-		#starting_date=k-CHECK_IN_INTERVAL
+		#starting_date=k-datetime.timedelta(hours=10)
 		#ending_date=k
 		#limit=1
 		request_string = API_URL+':'+str(API_PORT)+'/mac/'+mac	
@@ -603,13 +653,64 @@ def get_visibility_for_mac(mac,limit=None,starting_date=None,ending_date=None):
 		#print contents
 		if 'status' in contents and contents['status']=='ok':
 			for event in contents['eventlist']:
-				if event['mac']==mac:
+				#if event['mac']==mac:
 					#d=datetime(datetime.strptime(event['event_time'][5:-4],'%d %b %Y %H:%M:%S'))
 					d=datetime.datetime.fromtimestamp(event['event_time'])
 					#res.append( d)
-					res.append([d,event['beacon']] )
+					res.append((d,event['beacon']) )
 
 	return res
-	
+def get_beacon_devices():
+	"""
+	Request for devices using restful request
+	parameters:
+		none
+	returns 
+		list of all active devices in form of dict values containing device_serial and device_comment
+	"""
+	res=[]
+	request_string = API_URL+':'+str(API_PORT)+'/beacon'
+	contents= get(request_string).json()
+	if 'status' in contents and contents['status']=='ok':
+		res=contents['beacons']
+	return res
+def set_beacon_device(device_id,comment):
+	"""
+	Request to set comment in device with specifed serial 
+	parameters:
+		device_id 	- serial of beacon device to update
+		comment 	- new comment to be stored for device
+	returns 
+		status of operation 'ok' if successfull
+	"""
+	request_string = API_URL+':'+str(API_PORT)+'/beacon/'+str(device_id)
+	contents= put(request_string, data={'comment':comment}).json()
+	return contents['status']
+
+def add_beacon_device(device_id,comment):
+	"""
+	Request to add new device with specifed serial 
+	parameters:
+		device_id 	- serial of beacon device be added
+		comment 	- comment to be stored for device
+	returns 
+		status of operation 'ok' if successfull
+	"""
+	request_string = API_URL+':'+str(API_PORT)+'/beacon/'+str(device_id)
+	contents= post(request_string, data={'comment':comment}).json()
+	return contents['status']
+def remove_beacon_device(device_id):
+	"""
+	Request remove device with specifed serial 
+	parameters:
+		device_id 	- serial of beacon device to remove
+	returns 
+		status of operation 'ok' if successfull
+	"""
+	request_string = API_URL+':'+str(API_PORT)+'/beacon/'+str(device_id)
+	contents= delete(request_string).json()
+	return contents['status']
+
 if __name__=="__main__":
 	app.run()
+	

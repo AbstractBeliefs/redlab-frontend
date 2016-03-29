@@ -1,8 +1,11 @@
 {% extends "index.html" %}
 {% block container %}
 <div class="jumbotron">
+{%if request.endpoint =='edit'%}
 {% include 'short_user_options.html' %}
-
+{% else %}
+{% include 'short_user1.html' %}
+{% endif %}
 {% block short_user%}{% endblock %}
 
 {% if content.history %}
@@ -10,7 +13,7 @@
 	<div>
 		{% for entry in content.history %}
 			{% if entry[0] == entry[1] %}
-		<li>seen: {{entry[0]}} </li>
+		<li>Check in: {{entry[0]}} </li>
 			{% else %}
 		<li>Logged in: {{entry[0]}} - {{entry[1]}}</li>
 			{% endif %}

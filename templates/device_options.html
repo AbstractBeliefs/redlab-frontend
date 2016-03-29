@@ -1,41 +1,51 @@
 {% extends 'index.html' %}
 {% block container %}
-<div >
-	<form method="POST">
-		<ul class="nav nav-tabs">
-			<li role="presentation" class="active"><a href="#">Home</a></li>
-			<li role="presentation"><a href="#">Profile</a></li>
-			<li role="presentation"><a href="#">Messages</a></li>
-		</ul>
 
-
-		<div class="row ">
-			<div class="col-lg-6">
-				<div class="input-group  input-group-lg">
-					<span class="input-group-btn">
-						<button class="btn btn-default" type="button">Go!</button>
-					</span>
-					<input type="text" class="form-control" placeholder="Search for...">
-				</div>
-			</div><!-- /input-group -->
-		</div><!-- /.col-lg-6 -->
-		<div>
-			<div class="input-group input-group-lg">
-			<span class="input-group-btn">
-				<button type="button" class="btn btn-default" id="sizing-addon1">@</button>
-				<input type="text" class="form-control" placeholder="Username" aria-describedby="sizing-addon1">
-			</span>
-			</div>
-		</div><!-- /.row -->
-		<div class="col-lg-6">
+	<form method='POST'>
+		 <div>
 			<div class="input-group">
-				<input type="text" class="form-control" placeholder="Search for...">
-				<span class="input-group-btn">
-					<button class="btn btn-default" type="button">Go!</button>
-				</span>
-			</div><!-- /input-group -->
-		</div><!-- /.col-lg-6 -->
-
+			<table width=100%>
+				<tr>
+					<td>
+						<input type="text" class="form-control" name="serial"  placeholder="New beacon serial number" />
+					</td>
+					<td>
+						<input type="text" class="form-control" name="comment" placeholder="New beacon comment" />
+					</td>
+					<td>
+						<div class="input-group-btn">
+							<button type="submit" class="btn btn-secondary" name="Add" value="Add" aria-haspopup="true" aria-expanded="false">
+							Add
+							</button>
+							
+						</div>
+					</td>
+				</tr>
+			</table>
+			</div>
+		</div>
 	</form>
-</div>
+{%if beacons%}		
+	{% for beacon in beacons %}
+	<hr>
+	<form method='POST'>
+		 <div >
+			<div class="input-group">
+				<span class="input-group-addon" id="sizing-addon1">Serial no: {{beacon['serial']}}</span>
+				<input type="text" name="comment" class="form-control" aria-label="Text input with dropdown button" value="{{beacon.comment}}">
+				<div class="input-group-btn">
+					<button type="submit" class="btn btn-secondary" name="Update"  value="{{beacon.serial}}" aria-haspopup="true" aria-expanded="false">
+					Update
+					</button>
+					<button type="submit" class="btn btn-secondary" name="Delete" value="{{beacon.serial}}" aria-haspopup="true" aria-expanded="false">
+					Delete
+					</button>
+				</div>
+			</div>
+		</div>
+	</form>
+	{% endfor%}
+{%endif%}
+
+
 {% endblock %}

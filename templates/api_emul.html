@@ -5,7 +5,7 @@
 	
 	<select name="beacon">
 {% for dev in beacons %}
-		<option value='{{ dev[0] }}'>{{ dev[1] }}</option>
+		<option value='{{ dev[0] }}'>serial:{{ dev[0] }} comment:{{ dev[1] }}</option>
 {% endfor %}
 	</select>
 	
@@ -15,9 +15,8 @@
 {% endfor %}
 	</select>
 	
-	<button type=submit name="event" value="1">DHCP</button>	
-	<button type=submit name="event" value="2">PING</button>
-	<button type=submit name="event" value="3">User Request</button>
+	<button type=submit name="event" value="1">Check-in</button>	
+	
 </form>
 
 {% endblock %}
