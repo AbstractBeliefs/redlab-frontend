@@ -1,10 +1,22 @@
+
+"""
+Implementation of fronted for Checkin-Beacon project
+Funcitons to access database
+Edinburgh Napier University 3rd year group project 2015/2016
+Group members: 
+	Christopher Caira
+	Przmeyslaw Beniamin Dorzak
+	Edward Kellet
+	Braian Lawes
+	Gareth Pulham
+	
+Author - Przemyslaw Beniamin Dorzak
+Design - Przmeyslaw Beniamin Dorzak / Gareth Pulham
+
+"""
 import config
 from contextlib import closing # for mysql  cursor witch closing clasue
 import MySQLdb as mdb
-
-
-
-
 
 def add_new_user(username,password):
 	"""
@@ -25,8 +37,6 @@ def add_new_user(username,password):
 		update_mysql_query("INSERT INTO `frontend`.`users` (login,password,user_data) values ('"+username+"','"+password+"',0)")
 	return error
 
-
-
 def check_user_credentials(login,password):
 	"""
 	Retrieves basic data for for user
@@ -41,9 +51,6 @@ def check_user_credentials(login,password):
 	data= execute_mysql_query("SELECT id,user_data FROM users WHERE login='" + login + "' AND password='" + password + "'")
 	if data:
 		return data[0]
-
-
-
 
 def get_user_details(user_id):
 	"""
