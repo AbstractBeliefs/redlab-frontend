@@ -20,10 +20,20 @@ from flask import redirect
 from flask import url_for
 from flask import flash
 
-from requests import put,get,post,delete	# restful requests
 
-from flaskext.mysql import MySQL
-from contextlib import closing # for mysql  cursor witch closing clasue
+
+
+from restful import get_visibility_for_mac
+from restful import get_beacon_devices,add_beacon_device,remove_beacon_device,set_beacon_device
+from db_functions import check_user_credentials,get_user_details
+from db_functions import get_mac_address,set_mac_address,get_mac_list_for_user
+from db_functions import get_list_of_users
+from db_functions import update_account_avatar
+
+
+
+
+
 import MySQLdb 			#escape_string()
 
 
@@ -33,25 +43,13 @@ import datetime			#calculate time periods
 #upload file
 import os				#disk operations for saving avatar file
 #from werkzeug import secure_filename #file is stored in changed name.
-UPLOAD_FOLDER='static/uploads'
-ALLOWED_EXTENTIONS= set (['png','jpg','jpeg','gif'])
-
-
-#configuration
-DEBUG = True
-SECRET_KEY='develompent key'
-MYSQL_DATABASE_USER ='root'
-MYSQL_DATABASE_PASSWORD = 'root'
-MYSQL_DATABASE_DB = 'frontend'
-MYSQL_DATABASE_HOST = 'localhost'
-CHECK_IN_INTERVAL= datetime.timedelta(minutes=10)
-API_URL='http://localhost' 
-API_PORT=8080
+import config
 
 app=Flask(__name__)
-app.config.from_object(__name__)
+app.config.from_object(config)
 
-#app.config['UPLOAD_FOLDER']=UPLOAD_FOLDER
+CHECK_IN_INTERVAL= datetime.timedelta(minutes=10)
+
 
 # TODO
 # To load from separate file use. FRONTENT_SETINGS should be then env-setting 
@@ -62,8 +60,8 @@ app.config.from_object(__name__)
 # TODO 
 # Validation of data to make sure that sql injecton can't be done.
 # Need to be consulted with Brian
-mysql=MySQL()
-mysql.init_app(app)
+
+
 
 def allowed_file(filename):
 	"""
@@ -73,7 +71,7 @@ def allowed_file(filename):
 	returns: 
 	 	True if filename is allowed, False otherwise
 	"""
-	return '.'in filename and filename.rsplit('.',1)[1] in ALLOWED_EXTENTIONS
+	return '.'in filename and filename.rsplit('.',1)[1] in config.ALLOWED_EXTENTIONS
 
 
 
@@ -90,6 +88,7 @@ def index():
 
 @app.route('/emulator', methods=['GET', 'POST'])
 def api_emul():
+	from db_functions import execute_mysql_query,update_mysql_query
 	# emulation of ap-server behaviour 
 	# displays form to select registered beacon device and Mac in ordet to emulate
 	# VisibilityEvent. Only for test purpse. Should be removed from final solution
@@ -166,13 +165,14 @@ def edit():
 	else:
 		navpil=None
 		profile=True
+		error=None
 		#if user is on "me"page can change his avatar picture
 		if request.method == 'POST':
 			if 'mac' in request.form:
 				#check if mac address has been changed
 				mac = request.form['mac']
-				#check if new mac address proper mac address
-				if(re.match("^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$",mac)):
+				#check if new mac address proper mac address or empty string
+				if(re.match("^$|^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$",mac)):
 					#check if new mac is the same as in database
 					if not mac == get_mac_address(user_id):
 						#change mac address.
@@ -185,18 +185,13 @@ def edit():
 					#	save file as 'avatar(user_id)_.ext' so every user has 1 profile foto
 					#	no check on size is done!!
 					#	No check on pic dimensions is done!!
-					#	file can be uploaded only once. can not be deleted
-
 					#filename = secure_filename(file.filename)
 					filename='avatar'+str(user_id)+'_.'+file.filename.rsplit('.',1)[1]
-					#if os.path.isfile((os.path.join(app.config['UPLOAD_FOLDER'],filename))):
-					#	 print os.remove(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-					#else:
-					#	print("Sorry, I can not remove %s file." % (os.path.join(app.config['UPLOAD_FOLDER']+filename)))
-						
 					file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
 					update_account_avatar(user_id,filename)
 					return redirect(url_for('edit',user_id=user_id))
+			if error: 
+				flash(error)
 	content=show_content(user_id,True)
 	return render_template('profile.html',session=session,content=content,profile=True)
 
@@ -455,261 +450,27 @@ def merge_sequence(seq,interval):
 		result.append([seq[lo-1],seq[hi]])
 	return result
 
-
-
-def add_new_user(username,password):
-	"""
-	Adds new user to database
-	parameters:
-		username - string containing login of new user
-		password - string containing password to be stored for new user
-	returns:
-		error message
-	"""
-	error=None
-	# check if user of specified login allready exists
-	data=execute_mysql_query("SELECT COUNT(*) FROM users WHERE `login` = '"+username+"'")[0]
-	if data[0] != 0:
-		error = "login taken pick different"
-	else:
-		# all good, add new user
-		update_mysql_query("INSERT INTO `frontend`.`users` (login,password,user_data) values ('"+username+"','"+password+"',0)")
-	return error
-
-
-
-def check_user_credentials(login,password):
-	"""
-	Retrieves basic data for for user
-	Parameters: 
-		login - login name of user to get information
-		password - password of user to authenticate 
-	Returns:
-		table containing basic inforation on user
-		data[0] - uesr_id	-  unique id of user
-		data[1] - user_data -  0 if user is ordinary user / 1 if user is admin
-	"""
-	data= execute_mysql_query("SELECT id,user_data FROM users WHERE login='" + login + "' AND password='" + password + "'")
-	if data:
-		return data[0]
-
-
-def get_check_in_events(user_id):
+def get_check_in_events(user_id,limit=None):
 	"""
 	Retrieves data for checking events for specified user
 	Parameters: 
 		user_id - Id of user to get inforation
+		limit	- number of check_in events to register
 	Returns:
 		table containing checking events ordeterd desending by time of occurence
 	"""
 	#data =execute_mysql_query("SELECT register_time FROM check_in_events WHERE user_id='" +str(user_id) + "' ORDER BY register_time DESC")
-	data=get_visibility_for_mac(get_mac_address(user_id))
+	maclist=[]
+	data=[]
+	maclist=get_mac_list_for_user(user_id)
+	#maclist.append(get_mac_address(user_id))
+	for mac,start_time,end_time in maclist:
+		data+=(get_visibility_for_mac(mac,start_time,end_time))
 	return data
 
-def get_user_details(user_id):
-	"""
-	Retrieves from database values connected to user with specified user_id
-	Parameters:
-		user_id - Id of user to get inforation
-	Returns:
-		talbe containing inforation
-		data[0] - id
-		data[1] - login
-		data[2] - user_data - 1 if user is admin
-		data[3]	- location of picture / null for default picture
-	"""
-	data= execute_mysql_query("SELECT id,login,user_data, picture FROM users WHERE id='" +str(user_id) + "'")
-	if data:
-		return data[0]
-
-def get_list_of_users(pattern):
-	"""
-	gets list of users statring with specified pattern. 
-	If pattern is empty string All users are returned.
-	parameters: 
-		pattern - String containing begining of login to filter
-	returns:
-		list o id's of users whose login begins with pattern
-	"""
-	pattern=pattern+'%' 
-	return execute_mysql_query("SELECT id FROM users WHERE login like '" + pattern + "'")
-
-def set_mac_address(user_id,mac):
-	"""
-	 Assigns MAC address to user with specified user_id
-	 If Mac is assigned to other user operation is not successfull
-	 If Mac have not been used function adds new address.
-	 if MAc is already in database function re-assigns it to specified user
-	Parameters:
-		user_id Id of user to assign Mac address
-		mac Mac-address to be assigned. Format is not evaluated
-	Returns: 
-		error message.
-	"""
-	#check if already assigned
-	error=None
-	data=execute_mysql_query("SELECT count(mac) FROM (`frontend`.`mac` JOIN `frontend`.`users` ON (`mac`.id=`users`.`MAC_id`)) WHERE `mac`.`mac`='" +mac+"'")[0]
-	if data and data[0]!=0:
-		return "Mac taken"
-	data=execute_mysql_query("SELECT id FROM `frontend`.`mac` WHERE `mac`.`mac`='" +mac+"'")
-	if not data:
-		# put new address into db
-		update_mysql_query("INSERT INTO `frontend`.`mac`( `mac`) VALUES ('" +mac+"')")
-
-		# get id of new address
-		data=execute_mysql_query("SELECT id FROM `frontend`.`mac` WHERE `mac`.`mac`='" +mac+"'")[0]
-		if not data:
-			return "problem with adding mac"
-	else:
-		data=data[0]
-	# assign addres to user
-	update_mysql_query("UPDATE `frontend`.`users` SET `MAC_id`='"+str(data[0])+"' WHERE `id`='"+str(user_id)+"'")
-
-	return 'all ok'
 
 
-def get_mac_address(user_id):
-	"""
-	Reads Mac address assigned to user with given user_id
-	Parameters:
-		user_id User whose Mac has to be retrived
-	Returns: 
-		string containing address of user or empty string if Mac address not assigned
-	"""
-	data =execute_mysql_query("SELECT mac FROM (`frontend`.`mac` JOIN `frontend`.`users` ON (`mac`.id=`users`.`MAC_id`)) WHERE `users`.`id`='" +str(user_id)+"'")
-	if data:
-		mac=data[0][0]
-	else:
-		mac=""
-	return mac
 
-def update_account_avatar(user_id,filename):
-	"""
-	Updates picture in database for specified user
-	Parameters:
-		user_id - Id of user to update picture
-		filename - File name of picture
-	 Returns:
-		none
-	"""
-	update_mysql_query("UPDATE `frontend`.`users` SET picture = '"+filename+"' WHERE id='"+str(user_id)+"'")
-
-def execute_mysql_query(query):
-	"""
-	Executes mysql query not requireing commit - SELECT
-	Parameters:
-		querry String containing query to execute
-	Returns:
-		Response data for query
-	"""
-	connection=mysql.connect()
-	with closing( connection.cursor() ) as cursor:
-		cursor.execute(query)
-		data = cursor.fetchall()
-	connection.close()
-	return data
-
-def update_mysql_query(query):
-	"""
-	Ececutes query requiring commit - INSERT, UPDATE, DELETE
-	Parameters:
-		querry String containing query to execute
-	Returns:
-		none
-	"""
-	connection=mysql.connect()
-	with closing( connection.cursor() ) as cursor:
-		cursor.execute(query)
-	connection.commit() #required to apply result of insert operation to database
-	connection.close() #release conneciton
-
-
-def get_visibility_for_mac(mac,limit=None,starting_date=None,ending_date=None):
-	"""
-	Gets all visibility events for specified mac within specified time period
-	parameters:
-		mac - string containing mac address to check
-		limit - number of evets of interest
-		starting_date - datetime containing begining of interval
-		ending_date - datetime containing end of interval
-	Returns:
-		List of [date,beacon] tuples when check-in event occured sorted in descending order
-	"""
-	res=[]
-	if mac:
-		#k=(execute_mysql_query('select now() from dual'))[0][0]
-		#starting_date=k-datetime.timedelta(hours=10)
-		#ending_date=k
-		#limit=1
-		request_string = API_URL+':'+str(API_PORT)+'/mac/'+mac	
-		if starting_date:
-			request_string+='/'+starting_date.strftime('%s')
-			if ending_date:
-				request_string+='/'+ending_date.strftime('%s')
-			
-		if limit:
-			request_string+='?limit='+str(limit)
-		contents= get(request_string).json()
-		#print contents
-		if 'status' in contents and contents['status']=='ok':
-			for event in contents['eventlist']:
-				#if event['mac']==mac:
-					#d=datetime(datetime.strptime(event['event_time'][5:-4],'%d %b %Y %H:%M:%S'))
-					d=datetime.datetime.fromtimestamp(event['event_time'])
-					#res.append( d)
-					res.append((d,event['beacon']) )
-
-	return res
-def get_beacon_devices():
-	"""
-	Request for devices using restful request
-	parameters:
-		none
-	returns 
-		list of all active devices in form of dict values containing device_serial and device_comment
-	"""
-	res=[]
-	request_string = API_URL+':'+str(API_PORT)+'/beacon'
-	contents= get(request_string).json()
-	if 'status' in contents and contents['status']=='ok':
-		res=contents['beacons']
-	return res
-def set_beacon_device(device_id,comment):
-	"""
-	Request to set comment in device with specifed serial 
-	parameters:
-		device_id 	- serial of beacon device to update
-		comment 	- new comment to be stored for device
-	returns 
-		status of operation 'ok' if successfull
-	"""
-	request_string = API_URL+':'+str(API_PORT)+'/beacon/'+str(device_id)
-	contents= put(request_string, data={'comment':comment}).json()
-	return contents['status']
-
-def add_beacon_device(device_id,comment):
-	"""
-	Request to add new device with specifed serial 
-	parameters:
-		device_id 	- serial of beacon device be added
-		comment 	- comment to be stored for device
-	returns 
-		status of operation 'ok' if successfull
-	"""
-	request_string = API_URL+':'+str(API_PORT)+'/beacon/'+str(device_id)
-	contents= post(request_string, data={'comment':comment}).json()
-	return contents['status']
-def remove_beacon_device(device_id):
-	"""
-	Request remove device with specifed serial 
-	parameters:
-		device_id 	- serial of beacon device to remove
-	returns 
-		status of operation 'ok' if successfull
-	"""
-	request_string = API_URL+':'+str(API_PORT)+'/beacon/'+str(device_id)
-	contents= delete(request_string).json()
-	return contents['status']
 
 if __name__=="__main__":
 	app.run()

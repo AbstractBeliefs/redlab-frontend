@@ -114,9 +114,15 @@ CREATE TABLE  `frontend`.`users` (
      ON UPDATE NO ACTION )
 ENGINE = InnoDB;
 
+drop table if exists `frontend`.`user_has_device`;
 
-
-
+CREATE TABLE `user_has_device` (
+`id` int NOT NULL AUTO_INCREMENT,
+`user_id` int, 
+`mac_id` int,
+`start_time` DATETIME,
+`end_time` DATETIME,
+PRIMARY KEY(id));
 
 
 -- --------------------------------------------------
