@@ -27,7 +27,7 @@ from restful import get_visibility_for_mac
 from restful import get_beacon_devices,add_beacon_device,remove_beacon_device,set_beacon_device
 from db_functions import check_user_credentials,get_user_details
 from db_functions import get_mac_address,set_mac_address,get_mac_list_for_user
-from db_functions import get_list_of_users
+from db_functions import get_list_of_users,add_new_user
 from db_functions import update_account_avatar
 
 

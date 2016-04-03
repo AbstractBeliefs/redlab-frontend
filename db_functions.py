@@ -148,7 +148,7 @@ def get_mac_list_for_user(user_id):
 	"""
 	#data =execute_mysql_query("SELECT mac FROM (`frontend`.`mac` JOIN `frontend`.`users` ON (`mac`.id=`users`.`MAC_id`)) WHERE `users`.`id`='" +str(user_id)+"'")
 	res=[]
-	data =execute_mysql_query("SELECT mac, start_time , end_time from user_has_device JOIN `users` ON (users.id=user_id) 	JOIN mac ON (user_has_device.mac_id=mac.id) WHERE `users`.`id`='" +str(user_id)+"'""")	
+	data =execute_mysql_query("SELECT mac, start_time , end_time from user_has_device JOIN `users` ON (users.id=user_id) 	JOIN mac ON (user_has_device.mac_id=mac.id) WHERE `users`.`id`='" +str(user_id)+"' ORDER BY user_has_device.id DESC""")	
 	if data:
 		#print data
 		res=data
