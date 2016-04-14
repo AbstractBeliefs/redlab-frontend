@@ -20,7 +20,8 @@ from flask import redirect
 from flask import url_for
 from flask import flash
 
-
+from flask import session
+#from flask.ext.session import Session
 
 
 from restful import get_visibility_for_mac
@@ -51,6 +52,9 @@ app.config.from_object(config)
 CHECK_IN_INTERVAL= datetime.timedelta(minutes=10)
 
 
+
+
+
 # TODO
 # To load from separate file use. FRONTENT_SETINGS should be then env-setting 
 # with assigned filename of settings.
@@ -76,7 +80,6 @@ def allowed_file(filename):
 
 
 
-session = dict()
 
 @app.route('/')
 @app.route('/index')
@@ -85,6 +88,9 @@ def index():
 	return render_template('index.html',session=session)
 
 
+@app.route ('/t')
+def t():
+	return 't'
 
 @app.route('/emulator', methods=['GET', 'POST'])
 def api_emul():

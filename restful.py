@@ -18,8 +18,11 @@ import config
 from requests import put,get,post,delete	# restful requests
 import datetime			#calculate time periods
 
+import logging
 
-API_URL=config.API_URL+':'+str(config.API_PORT)
+
+
+API_URL=config.API_URL +':'+str(config.API_PORT)
 
 def get_visibility_for_mac(mac,starting_date=None,ending_date=None,limit=None):
 	"""
@@ -67,9 +70,13 @@ def get_beacon_devices():
 	"""
 	res=[]
 	request_string = API_URL+'/beacon'
-	contents= get(request_string).json()
-	if 'status' in contents and contents['status']=='ok':
-		res=contents['beacons']
+	#logging.info('logging: '+ request_string)
+	try:
+		contents= get(request_string).json()
+		if 'status' in contents and contents['status']=='ok':
+			res=contents['beacons']
+	except:
+		pass
 	return res
 def set_beacon_device(device_id,comment):
 	"""

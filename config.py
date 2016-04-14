@@ -22,10 +22,10 @@ ALLOWED_EXTENTIONS= set (['png','jpg','jpeg','gif'])
 #configuration
 DEBUG = True
 SECRET_KEY='develompent key'
-MYSQL_DATABASE_USER ='root'
-MYSQL_DATABASE_PASSWORD = 'root'
+MYSQL_DATABASE_USER ='frontend'
+MYSQL_DATABASE_PASSWORD = 'vC6qj39A9zPZDbdj'
 MYSQL_DATABASE_DB = 'frontend'
 MYSQL_DATABASE_HOST = 'localhost'
 CHECK_IN_INTERVAL= datetime.timedelta(minutes=10)
-API_URL='http://localhost' 
-API_PORT=8080
+API_URL='https://api.checkinbeacon.pulham.info' 
+API_PORT=443
