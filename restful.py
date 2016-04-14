@@ -22,6 +22,7 @@ import logging
 
 
 
+
 API_URL=config.API_URL +':'+str(config.API_PORT)
 
 def get_visibility_for_mac(mac,starting_date=None,ending_date=None,limit=None):
@@ -35,7 +36,6 @@ def get_visibility_for_mac(mac,starting_date=None,ending_date=None,limit=None):
 	Returns:
 		List of [date,beacon] tuples when check-in event occured sorted in descending order
 	"""
-	print 
 	res=[]
 	if mac:
 		#k=(execute_mysql_query('select now() from dual'))[0][0]
@@ -47,18 +47,21 @@ def get_visibility_for_mac(mac,starting_date=None,ending_date=None,limit=None):
 			request_string+='/'+starting_date.strftime('%s')
 			if ending_date:
 				request_string+='/'+ending_date.strftime('%s')
-			
 		if limit:
 			request_string+='?limit='+str(limit)
-		contents= get(request_string).json()
-		#print contents
-		if 'status' in contents and contents['status']=='ok':
-			for event in contents['eventlist']:
-				#if event['mac']==mac:
-					#d=datetime(datetime.strptime(event['event_time'][5:-4],'%d %b %Y %H:%M:%S'))
-					d=datetime.datetime.fromtimestamp(event['event_time'])
-					#res.append( d)
-					res.append((d,event['beacon']) )
+		try:
+			contents= get(request_string).json()
+			#print contents
+			if 'status' in contents and contents['status']=='ok':
+				for event in contents['eventlist']:
+					#if event['mac']==mac:
+						#d=datetime(datetime.strptime(event['event_time'][5:-4],'%d %b %Y %H:%M:%S'))
+						d=datetime.datetime.fromtimestamp(event['event_time'])
+						#res.append( d)
+						res.append((d,event['beacon']) )
+		except Exception as e:
+			logging.error(e)
+			raise Exception('Error sending data to API-server')
 	return res
 def get_beacon_devices():
 	"""
@@ -75,8 +78,9 @@ def get_beacon_devices():
 		contents= get(request_string).json()
 		if 'status' in contents and contents['status']=='ok':
 			res=contents['beacons']
-	except:
-		pass
+	except Exception as e:
+		logging.error(e)
+		raise Exception ('Error sending data to API-server')
 	return res
 def set_beacon_device(device_id,comment):
 	"""
@@ -88,7 +92,11 @@ def set_beacon_device(device_id,comment):
 		status of operation 'ok' if successfull
 	"""
 	request_string = API_URL+'/beacon/'+str(device_id)
-	contents= put(request_string, data={'comment':comment}).json()
+	try:
+		contents= put(request_string, data={'comment':comment}).json()
+	except Exception as e:
+		logging.error(e)
+		raise Exception('Error sending data to API-server')
 	return contents['status']
 
 def add_beacon_device(device_id,comment):
@@ -101,7 +109,11 @@ def add_beacon_device(device_id,comment):
 		status of operation 'ok' if successfull
 	"""
 	request_string = API_URL+'/beacon/'+str(device_id)
-	contents= post(request_string, data={'comment':comment}).json()
+	try:
+		contents= post(request_string, data={'comment':comment}).json()
+	except Exception as e:
+		logging.error(e)
+		raise Exception('Error sending data to API-server')
 	return contents['status']
 def remove_beacon_device(device_id):
 	"""
@@ -112,6 +124,10 @@ def remove_beacon_device(device_id):
 		status of operation 'ok' if successfull
 	"""
 	request_string = API_URL+'/beacon/'+str(device_id)
-	contents= delete(request_string).json()
+	try:
+		contents= delete(request_string).json()
+	except Exception as e:
+		logging.error(e)
+		raise('Error sending data to API-server')
 	return contents['status']
 

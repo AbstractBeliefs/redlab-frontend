@@ -51,10 +51,6 @@ app.config.from_object(config)
 
 CHECK_IN_INTERVAL= datetime.timedelta(minutes=10)
 
-
-
-
-
 # TODO
 # To load from separate file use. FRONTENT_SETINGS should be then env-setting 
 # with assigned filename of settings.
@@ -88,9 +84,7 @@ def index():
 	return render_template('index.html',session=session)
 
 
-@app.route ('/t')
-def t():
-	return 't'
+
 
 @app.route('/emulator', methods=['GET', 'POST'])
 def api_emul():
@@ -156,51 +150,53 @@ def register():
 ##################################################
 @app.route("/edit",methods=['GET','POST'])
 def edit():
-	if 'logged_in' not in session:
-	# if not logged in go to login screen		
-		flash('You are not logged in')
-		return redirect(url_for('login'))
-	#get user_id from get 
-	user_id=MySQLdb.escape_string(request.args['user_id'])
-	if user_id != str(session['logged_in']):
-		if not is_admin():
-			# access denied
-			return render_template('wip.html',error="Sorry??")
-		# to set active class in nav to #uer_login
-		navpil=show_content(user_id,False)['user_login']
-	else:
-		navpil=None
-		profile=True
-		error=None
-		#if user is on "me"page can change his avatar picture
-		if request.method == 'POST':
-			if 'mac' in request.form:
-				#check if mac address has been changed
-				mac = request.form['mac']
-				#check if new mac address proper mac address or empty string
-				if(re.match("^$|^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$",mac)):
-					#check if new mac is the same as in database
-					if not mac == get_mac_address(user_id):
-						#change mac address.
-						error = set_mac_address(user_id,mac)
-				else:
-					error ="New mac address is not valid"
-			if 'file' in request.files:
-				file = request.files['file']
-				if file and allowed_file(file.filename):
-					#	save file as 'avatar(user_id)_.ext' so every user has 1 profile foto
-					#	no check on size is done!!
-					#	No check on pic dimensions is done!!
-					#filename = secure_filename(file.filename)
-					filename='avatar'+str(user_id)+'_.'+file.filename.rsplit('.',1)[1]
-					file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-					update_account_avatar(user_id,filename)
-					return redirect(url_for('edit',user_id=user_id))
-			if error: 
-				flash(error)
-	content=show_content(user_id,True)
-	return render_template('profile.html',session=session,content=content,profile=True)
-
+	try:
+		if 'logged_in' not in session:
+		# if not logged in go to login screen		
+			flash('You are not logged in')
+			return redirect(url_for('login'))
+		#get user_id from get 
+		user_id=MySQLdb.escape_string(request.args['user_id'])
+		if user_id != str(session['logged_in']):
+			if not is_admin():
+				# access denied
+				return render_template('wip.html',error="Sorry??")
+			# to set active class in nav to #uer_login
+			navpil=show_content(user_id,False)['user_login']
+		else:
+			navpil=None
+			profile=True
+			error=None
+			#if user is on "me"page can change his avatar picture
+			if request.method == 'POST':
+				if 'mac' in request.form:
+					#check if mac address has been changed
+					mac = request.form['mac'].upper()
+					#check if new mac address proper mac address or empty string
+					if(re.match("^$|^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$",mac)):
+						#check if new mac is the same as in database
+						if not mac == get_mac_address(user_id):
+							#change mac address.
+							error = set_mac_address(user_id,mac)
+					else:
+						error ="New mac address is not valid"
+				if 'file' in request.files:
+					file = request.files['file']
+					if file and allowed_file(file.filename):
+						#	save file as 'avatar(user_id)_.ext' so every user has 1 profile foto
+						#	no check on size is done!!
+						#	No check on pic dimensions is done!!
+						#filename = secure_filename(file.filename)
+						filename='avatar'+str(user_id)+'_.'+file.filename.rsplit('.',1)[1]
+						file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+						update_account_avatar(user_id,filename)
+						return redirect(url_for('edit',user_id=user_id))
+				if error: 
+					flash(error)
+			content=show_content(user_id,True)
+		return render_template('profile.html',session=session,content=content,profile=True)
+	except Exception as e:
+		return render_template('wip.html', error=e)
 
 @app.route('/userdetails',methods=['GET'])
 def userdetails():
@@ -213,38 +209,40 @@ def options():
 	"""
 	Display list of active beacons and generate buttons to add, edit, delete 
 	"""
-	if(is_admin()):
-		# this is only avaliable for admin
-		if request.method=='POST':
-			if 'Update' in request.form:
-				device_id=MySQLdb.escape_string(request.form['Update'])
-				if unicode(device_id).isnumeric():
-					comment=MySQLdb.escape_string(request.form['comment'])
-					error = set_beacon_device(device_id,comment)
-				else :
-					error= '<Update> Error processing beacon serial'
-				
-			if "Add" in request.form:
-				device_id=(MySQLdb.escape_string(request.form['serial']))
-				
-				if unicode(device_id).isnumeric():
-					comment=comment=MySQLdb.escape_string(request.form['comment'])
-					error=add_beacon_device(device_id,comment)
-				else:
-					error='<Add> Beacon serial has to be greater than 0'
-			if 'Delete' in request.form:
-				device_id=MySQLdb.escape_string(request.form['Delete'])
-				if unicode(device_id).isnumeric():	
-					error=remove_beacon_device(device_id)
-				else:
-					error= '<Delete> Error processing beacon serial'
-			if error!= 'ok':
-				flash(error)
-		beacons=get_beacon_devices() # restful request for devices
-		return render_template('device_options.html',session=session,beacons=beacons)
-	else:
-		return render_template('wip.html',error="Unauthorised.")
-	
+	try:
+		if(is_admin()):
+			# this is only avaliable for admin
+			if request.method=='POST':
+				if 'Update' in request.form:
+					device_id=MySQLdb.escape_string(request.form['Update'])
+					if unicode(device_id).isnumeric():
+						comment=MySQLdb.escape_string(request.form['comment'])
+						error = set_beacon_device(device_id,comment)
+					else :
+						error= '<Update> Error processing beacon serial'
+					
+				if "Add" in request.form:
+					device_id=(MySQLdb.escape_string(request.form['serial']))
+					
+					if unicode(device_id).isnumeric():
+						comment=comment=MySQLdb.escape_string(request.form['comment'])
+						error=add_beacon_device(device_id,comment)
+					else:
+						error='<Add> Beacon serial has to be greater than 0'
+				if 'Delete' in request.form:
+					device_id=MySQLdb.escape_string(request.form['Delete'])
+					if unicode(device_id).isnumeric():	
+						error=remove_beacon_device(device_id)
+					else:
+						error= '<Delete> Error processing beacon serial'
+				if error!= 'ok':
+					flash(error)
+			beacons=get_beacon_devices() # restful request for devices
+			return render_template('device_options.html',session=session,beacons=beacons)
+		else:
+			return render_template('wip.html',error="Unauthorised.")
+	except Exception as e:
+		return render_template('wip.html', error=e)
 	
 @app.route('/users',methods=['GET', 'POST'])
 def users():
@@ -255,33 +253,35 @@ def users():
 	should add nav tab with user's login 
 	optioon ony for admins
 	"""
-	if not is_admin():
-		return render_template('index.html')
-	if 'picture' in request.form:
-		# pressed on button with user picture
-		selected_user= request.form['picture']
-		#get information on selected user from database
-		content=show_content(selected_user,True)
-		if not content['user_login'] in session['nav']:
-			#if nav for this user does not exist, add it to nav list
-			session['nav'][content['user_login']]=url_for('userdetails',user_id=content['user_id'])
-		return redirect(url_for('userdetails',user_id=content['user_id'],))
-	
-	#get list of users
-	pattern="" #empty pattern
-	if request.method=='POST':#get pattern from user input if set
-		if request.form['username']:
-			pattern=MySQLdb.escape_string(request.form['username'])
+	try:
+		if not is_admin():
+			return render_template('index.html')
+		if 'picture' in request.form:
+			# pressed on button with user picture
+			selected_user= request.form['picture']
+			#get information on selected user from database
+			content=show_content(selected_user,True)
+			if not content['user_login'] in session['nav']:
+				#if nav for this user does not exist, add it to nav list
+				session['nav'][content['user_login']]=url_for('userdetails',user_id=content['user_id'])
+			return redirect(url_for('userdetails',user_id=content['user_id'],))
 		
-	#append wildcard to pattern in order to find users starting with pattern
-	user_list=[]
-	data=get_list_of_users(pattern)
-	for row in data:
-		#get basic infrmation about each user from lsit of results
-		content=show_content(row[0],False)
-		user_list.append(content)
-	return render_template('users.html',session=session,user_list=user_list)
-
+		#get list of users
+		pattern="" #empty pattern
+		if request.method=='POST':#get pattern from user input if set
+			if request.form['username']:
+				pattern=MySQLdb.escape_string(request.form['username'])
+			
+		#append wildcard to pattern in order to find users starting with pattern
+		user_list=[]
+		data=get_list_of_users(pattern)
+		for row in data:
+			#get basic infrmation about each user from lsit of results
+			content=show_content(row[0],False)
+			user_list.append(content)
+		return render_template('users.html',session=session,user_list=user_list)
+	except Exception as e:
+		return render_template('wip.html', error=e)
 @app.route('/profile',methods=['GET' ])
 def profile():
 	"""
@@ -291,25 +291,26 @@ def profile():
 	admin sees list of visibility events
 	when device not set for this user message should be displayed.
 	"""
-	if 'logged_in' not in session:
-	# if not logged in go to login screen		
-		flash('You are not logged in')
-		return redirect(url_for('login'))
-	#get user_id from get 
-	user_id=MySQLdb.escape_string(request.args['user_id'])
-	if user_id != str(session['logged_in']):
-		if not is_admin():
-			# access denied
-			return render_template('wip.html',error="Sorry??")
-		# to set active class in nav to #uer_login
-		navpil=show_content(user_id,False)['user_login']
-	else:
-		navpil=None
-		profile=True
-		
-	content=show_content(user_id,True)
-	return render_template('profile.html',session=session,content=content,profile=True,navpil=navpil)
-	
+	try:
+		if 'logged_in' not in session:
+		# if not logged in go to login screen		
+			flash('You are not logged in')
+			return redirect(url_for('login'))
+		#get user_id from get 
+		user_id=MySQLdb.escape_string(request.args['user_id'])
+		if user_id != str(session['logged_in']):
+			if not is_admin():
+				# access denied
+				return render_template('wip.html',error="Sorry??")
+			# to set active class in nav to #uer_login
+			navpil=show_content(user_id,False)['user_login']
+		else:
+			navpil=None
+			profile=True
+			content=show_content(user_id,True)
+		return render_template('profile.html',session=session,content=content,profile=True,navpil=navpil)
+	except Exception as e:
+			return render_template('wip.html', error=e)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -318,22 +319,25 @@ def login():
 	validates user input 
 	if entered data is valid logs in by setting session values
 	"""
-	error = None
-	if request.method == 'POST':		
-		if request.form['username']=="":
-			error = 'Invalid username'
-		elif request.form['password'] == "":
-			error = 'Invalid password'
-		else:
-			#TODO validation of data to make sure that sql injecton can't be done
-			#need to be consulted with Brian
-			username=MySQLdb.escape_string(request.form['username'])
-			pasword=MySQLdb.escape_string(request.form['password'])
-			if login_user(username, pasword):
+	try:
+		error = None
+		if request.method == 'POST':		
+			if request.form['username']=="":
+				error = 'Invalid username'
+			elif request.form['password'] == "":
+				error = 'Invalid password'
+			else:
+				#TODO validation of data to make sure that sql injecton can't be done
+				#need to be consulted with Brian
+				username=MySQLdb.escape_string(request.form['username'])
+				pasword=MySQLdb.escape_string(request.form['password'])
+				if login_user(username, pasword):
 
-				return redirect(url_for('profile',user_id=session['logged_in']))
-			
-	return render_template('login.html', error=error)
+					return redirect(url_for('profile',user_id=session['logged_in']))
+				
+		return render_template('login.html', error=error)
+	except Exception as e:
+		return render_template('wip.html', error=e)
 
 @app.route('/logout')
 def logout():

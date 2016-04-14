@@ -17,6 +17,7 @@ Design - Przmeyslaw Beniamin Dorzak / Gareth Pulham
 import config
 from contextlib import closing # for mysql  cursor witch closing clasue
 import MySQLdb as mdb
+import logging
 
 def add_new_user(username,password):
 	"""
@@ -176,12 +177,16 @@ def execute_mysql_query(query):
 	Returns:
 		Response data for query
 	"""
-	connection=mdb.connect(config.MYSQL_DATABASE_HOST,config.MYSQL_DATABASE_USER,config.MYSQL_DATABASE_PASSWORD,config.MYSQL_DATABASE_DB);
-	with closing( connection.cursor() ) as cursor:
-		cursor.execute(query)
-		data = cursor.fetchall()
-	connection.close()
-	return data
+	try:
+		connection=mdb.connect(config.MYSQL_DATABASE_HOST,config.MYSQL_DATABASE_USER,config.MYSQL_DATABASE_PASSWORD,config.MYSQL_DATABASE_DB);
+		with closing( connection.cursor() ) as cursor:
+			cursor.execute(query)
+			data = cursor.fetchall()
+		connection.close()
+		return data
+	except Exception as e:
+		logging.error(e)
+		raise('Error accessing database')
 
 def update_mysql_query(query):
 	"""
@@ -191,8 +196,12 @@ def update_mysql_query(query):
 	Returns:
 		none
 	"""
-	connection=mdb.connect(config.MYSQL_DATABASE_HOST,config.MYSQL_DATABASE_USER,config.MYSQL_DATABASE_PASSWORD,config.MYSQL_DATABASE_DB);
-	with closing( connection.cursor() ) as cursor:
-		cursor.execute(query)
-	connection.commit() #required to apply result of insert operation to database
-	connection.close() #release conneciton
+	try:
+		connection=mdb.connect(config.MYSQL_DATABASE_HOST,config.MYSQL_DATABASE_USER,config.MYSQL_DATABASE_PASSWORD,config.MYSQL_DATABASE_DB);
+		with closing( connection.cursor() ) as cursor:
+			cursor.execute(query)
+		connection.commit() #required to apply result of insert operation to database
+		connection.close() #release conneciton
+	except Exception as e:
+		logging.error(e)
+		raise('Error accessing database')
