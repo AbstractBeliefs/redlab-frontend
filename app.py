@@ -307,7 +307,7 @@ def profile():
 		else:
 			navpil=None
 			profile=True
-			content=show_content(user_id,True)
+		content=show_content(user_id,True)
 		return render_template('profile.html',session=session,content=content,profile=True,navpil=navpil)
 	except Exception as e:
 			return render_template('wip.html', error=e)
