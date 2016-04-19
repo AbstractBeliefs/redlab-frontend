@@ -31,7 +31,8 @@ from db_functions import get_mac_address,set_mac_address,get_mac_list_for_user
 from db_functions import get_list_of_users,add_new_user
 from db_functions import update_account_avatar
 
-
+import logging
+logging.basicConfig(format="RedLab Frontend: %(levelname)s: %(message)s", level=logging.DEBUG)
 
 
 
@@ -80,6 +81,7 @@ def allowed_file(filename):
 @app.route('/')
 @app.route('/index')
 def index():
+	logging.info("Got a request for the index")
 	# main entry for webpage.
 	return render_template('index.html',session=session)
 
@@ -118,6 +120,7 @@ def wip():
 	
 @app.route('/register',methods=['GET', 'POST'])
 def register():
+	logging.info("Got a request for registration")
 	"""
 	displays form to capture user input for registration
 	validates user input 
@@ -150,6 +153,7 @@ def register():
 ##################################################
 @app.route("/edit",methods=['GET','POST'])
 def edit():
+	logging.info("Got a request to edit a profile")
 	try:
 		if 'logged_in' not in session:
 		# if not logged in go to login screen		
@@ -200,12 +204,14 @@ def edit():
 
 @app.route('/userdetails',methods=['GET'])
 def userdetails():
+	logging.info("Got a request for user details")
 	#redirect to profile for specified user
 	user_id=MySQLdb.escape_string(request.args['user_id'])
 	return redirect(url_for('profile',user_id=user_id))
 	
 @app.route('/options',methods=['GET','POST'])	
 def options():
+	logging.info("Got a request for options")
 	"""
 	Display list of active beacons and generate buttons to add, edit, delete 
 	"""
@@ -253,6 +259,7 @@ def users():
 	should add nav tab with user's login 
 	optioon ony for admins
 	"""
+	logging.info("Got a request for user list")
 	try:
 		if not is_admin():
 			return render_template('index.html')
@@ -291,6 +298,7 @@ def profile():
 	admin sees list of visibility events
 	when device not set for this user message should be displayed.
 	"""
+	logging.info("Got a request for a profile")
 	try:
 		if 'logged_in' not in session:
 		# if not logged in go to login screen		
@@ -319,6 +327,7 @@ def login():
 	validates user input 
 	if entered data is valid logs in by setting session values
 	"""
+	logging.info("Got a request for login")
 	try:
 		error = None
 		if request.method == 'POST':		
@@ -341,6 +350,7 @@ def login():
 
 @app.route('/logout')
 def logout():
+	logging.info("Got a request for logout")
 	# logs out user by clearing session values.
 	session.clear()
 	flash('You were logged out')
@@ -353,6 +363,7 @@ def session_start():
 		resets global variable session.
 		clears additional nav tabs.
 	"""
+	logging.info("Starting session")
 	session.clear()
 	session['nav']=dict()
 	
