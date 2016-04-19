@@ -73,7 +73,7 @@ def get_beacon_devices():
 	"""
 	res=[]
 	request_string = API_URL+'/beacon'
-	#logging.info('logging: '+ request_string)
+	logging.info('Requesting for beacon devices')
 	try:
 		contents= get(request_string).json()
 		if 'status' in contents and contents['status']=='ok':
@@ -91,6 +91,7 @@ def set_beacon_device(device_id,comment):
 	returns 
 		status of operation 'ok' if successfull
 	"""
+	logging.info("setting comment for beacon %s to '%s'",device_id,comment)
 	request_string = API_URL+'/beacon/'+str(device_id)
 	try:
 		contents= put(request_string, data={'comment':comment}).json()
@@ -108,8 +109,10 @@ def add_beacon_device(device_id,comment):
 	returns 
 		status of operation 'ok' if successfull
 	"""
+	logging.info('adding new beacon device')	
 	request_string = API_URL+'/beacon/'+str(device_id)
 	try:
+
 		contents= post(request_string, data={'comment':comment}).json()
 	except Exception as e:
 		logging.error(e)
@@ -123,6 +126,7 @@ def remove_beacon_device(device_id):
 	returns 
 		status of operation 'ok' if successfull
 	"""
+	logging.info("Deleting Beacon device")
 	request_string = API_URL+'/beacon/'+str(device_id)
 	try:
 		contents= delete(request_string).json()

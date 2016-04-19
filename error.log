@@ -1,0 +1,12 @@
+2016-04-17 12:34:02,014 Error on request:
+Traceback (most recent call last):
+  File "/usr/local/lib/python2.7/dist-packages/werkzeug/serving.py", line 193, in run_wsgi
+    execute(self.server.app)
+  File "/usr/local/lib/python2.7/dist-packages/werkzeug/serving.py", line 184, in execute
+    write(data)
+  File "/usr/local/lib/python2.7/dist-packages/werkzeug/serving.py", line 152, in write
+    self.send_header(key, value)
+  File "/usr/lib/python2.7/BaseHTTPServer.py", line 401, in send_header
+    self.wfile.write("%s: %s\r\n" % (keyword, value))
+IOError: [Errno 32] Broken pipe
+2016-04-17 12:34:02,941  * Debugger is active!

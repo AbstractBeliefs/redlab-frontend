@@ -32,7 +32,7 @@ from db_functions import get_list_of_users,add_new_user
 from db_functions import update_account_avatar
 
 import logging
-logging.basicConfig(format="RedLab Frontend: %(levelname)s: %(message)s", level=logging.DEBUG)
+
 
 
 
@@ -88,7 +88,7 @@ def index():
 
 
 
-@app.route('/emulator', methods=['GET', 'POST'])
+#@app.route('/emulator', methods=['GET', 'POST'])
 def api_emul():
 	from db_functions import execute_mysql_query,update_mysql_query
 	# emulation of ap-server behaviour 

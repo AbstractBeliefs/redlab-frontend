@@ -35,7 +35,7 @@ def add_new_user(username,password):
 		error = "login taken pick different"
 	else:
 		# all good, add new user
-		update_mysql_query("INSERT INTO `frontend`.`users` (login,password,user_data) values ('"+username+"','"+password+"',0)")
+		update_mysql_query("INSERT INTO `frontend`.`users` (login,password,user_data) VALUES ('"+username+"',PASSWORD('"+password+"'),0)")
 	return error
 
 def check_user_credentials(login,password):
@@ -49,9 +49,11 @@ def check_user_credentials(login,password):
 		data[0] - uesr_id	-  unique id of user
 		data[1] - user_data -  0 if user is ordinary user / 1 if user is admin
 	"""
-	data= execute_mysql_query("SELECT id,user_data FROM users WHERE login='" + login + "' AND password='" + password + "'")
+	data= execute_mysql_query("SELECT id,user_data FROM users WHERE login='" + login + "' AND password=PASSWORD('" + password + "')")
 	if data:
 		return data[0]
+	else :
+		logging.warning("incorrect password for user %s",login)
 
 def get_user_details(user_id):
 	"""
@@ -96,8 +98,8 @@ def set_mac_address(user_id,mac):
 	#check if already assigned
 	error=None
 	data =execute_mysql_query("SELECT count(*) FROM user_has_device JOIN mac ON (user_has_device.mac_id=mac.id) WHERE end_time IS NULL and mac = '"+mac+"'")
-	print data
 	if data and data[0][0]!=0:
+		logging.warning("User %s requested for mac in use [%s]", user_id,mac)
 		return "Mac taken"
 	
 	if mac != "":
@@ -110,6 +112,7 @@ def set_mac_address(user_id,mac):
 			# get id of new address
 			data=execute_mysql_query("SELECT id FROM `frontend`.`mac` WHERE `mac`.`mac`='" +mac+"'")[0]
 			if not data:
+				logging.error("Could not add mac [%s] into database" ,mac)
 				return "problem with adding mac"
 		else:
 			data=data[0]
@@ -117,7 +120,7 @@ def set_mac_address(user_id,mac):
 	update_mysql_query("UPDATE user_has_device SET end_time=now() WHERE end_time IS NULL AND user_id="+str(user_id))
 	if mac != "":
 		update_mysql_query("insert into `frontend`.`user_has_device` (mac_id,user_id,start_time) values ('"+str(data[0])+"','"+str(user_id)+"', now() )")
-
+	logging.debug("changed mac for user %s to [%s]",user_id,mac)
 	return 'all ok'
 
 
@@ -167,7 +170,7 @@ def update_account_avatar(user_id,filename):
 		none
 	"""
 	update_mysql_query("UPDATE `frontend`.`users` SET picture = '"+filename+"' WHERE id='"+str(user_id)+"'")
-
+	logging.debug("updated avater for user %s",user_id)
 
 def execute_mysql_query(query):
 	"""
