@@ -28,7 +28,7 @@ MYSQL_DATABASE_PASSWORD = 'vC6qj39A9zPZDbdj'
 MYSQL_DATABASE_DB = 'frontend'
 MYSQL_DATABASE_HOST = 'localhost'
 CHECK_IN_INTERVAL= datetime.timedelta(minutes=10)
-API_URL='https://localhost' 
+API_URL='https://api.checkinbeacon.pulham.info' 
 API_PORT=443
 
 logging.basicConfig(format="RedLab Frontend: %(levelname)s: %(message)s", level=logging.INFO)
