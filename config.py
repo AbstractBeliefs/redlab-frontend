@@ -1,4 +1,5 @@
 """
+file: config.py
 Implementation of fronted for Checkin-Beacon project
 Configuration file for frontend server
 Edinburgh Napier University 3rd year group project 2015/2016

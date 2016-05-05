@@ -1,5 +1,6 @@
 
 """
+file: db_functions.py
 Implementation of fronted for Checkin-Beacon project
 Funcitons to access database
 Edinburgh Napier University 3rd year group project 2015/2016

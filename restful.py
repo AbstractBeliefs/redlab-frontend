@@ -1,4 +1,5 @@
 """
+file: restful.py
 Module for restful service requests
 
 Implementation of fronted for Checkin-Beacon project

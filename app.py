@@ -1,4 +1,5 @@
 """
+file: app.py
 Implementation of fronted for Checkin-Beacon project
 Edinburgh Napier University 3rd year group project 2015/2016
 Group members: 
@@ -52,17 +53,10 @@ app.config.from_object(config)
 
 CHECK_IN_INTERVAL= datetime.timedelta(minutes=10)
 
-# TODO
 # To load from separate file use. FRONTENT_SETINGS should be then env-setting 
 # with assigned filename of settings.
-# Settins are stored in sectet.txt.
-#app.config.from_envvar('FRONTENT_SETINGS',silent=true)
-
-# TODO 
-# Validation of data to make sure that sql injecton can't be done.
-# Need to be consulted with Brian
-
-
+# Settins are stored in config.py
+# app.config.from_envvar('FRONTENT_SETINGS',silent=true)
 
 def allowed_file(filename):
 	"""
